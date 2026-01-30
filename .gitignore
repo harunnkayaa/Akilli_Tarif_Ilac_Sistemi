@@ -1,24 +1,101 @@
-cat > .gitignore << 'EOF'
-build/
-.pub-cache/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
 
-# --- Android / iOS generated ---
-android/.gradle/
-android/local.properties
-ios/Pods/
-ios/.symlinks/
-ios/Flutter/Flutter.framework
-ios/Flutter/Flutter.podspec
-ios/Flutter/Flutter.xcframework
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
 
-# --- IDE ---
-.vscode/
 .idea/
 *.iml
 
-# --- Logs ---
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+.venv/
+venv/
+env/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+coverage/
+.coverage
+htmlcov/
+
 *.log
-EOF
+
+# If you ever create local sqlite
+*.sqlite3
+
+# =========================
+# FastAPI / Uvicorn
+# =========================
+*.pid
+
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+token.json
+
+# =========================
+# Docker / DB volumes & dumps
+# =========================
+**/pgdata/
+**/postgres-data/
+**/data/postgres/
+**/docker-volumes/
+
+*.dump
+*.sql
+*.bak
+
+# =========================
+# Flutter / Dart
+# =========================
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+*.keystore
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+
+# =========================
+# Node (if ever used)
+# =========================
+node_modules/
+
+# =========================
+# Misc
+# =========================
+tmp/
+.cache/
+dist/
