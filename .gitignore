@@ -1,16 +1,9 @@
-# --- Python ---
-__pycache__/
-*.pyc
-.env
-*.env
-
-# --- Flutter / Dart ---
-.dart_tool/
-.build/
+cat > .gitignore << 'EOF'
 build/
 .pub-cache/
 .flutter-plugins
 .flutter-plugins-dependencies
+.packages
 
 # --- Android / iOS generated ---
 android/.gradle/
@@ -19,6 +12,13 @@ ios/Pods/
 ios/.symlinks/
 ios/Flutter/Flutter.framework
 ios/Flutter/Flutter.podspec
+ios/Flutter/Flutter.xcframework
 
-# --- macOS ---
-.DS_Store
+# --- IDE ---
+.vscode/
+.idea/
+*.iml
+
+# --- Logs ---
+*.log
+EOF
