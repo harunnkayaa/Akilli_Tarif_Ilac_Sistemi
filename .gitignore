@@ -1,0 +1,24 @@
+# --- Python ---
+__pycache__/
+*.pyc
+.env
+*.env
+
+# --- Flutter / Dart ---
+.dart_tool/
+.build/
+build/
+.pub-cache/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# --- Android / iOS generated ---
+android/.gradle/
+android/local.properties
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# --- macOS ---
+.DS_Store

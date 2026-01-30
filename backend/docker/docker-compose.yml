@@ -1,0 +1,15 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: smart-db
+    environment:
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: apppass
+      POSTGRES_DB: smartapp
+    ports:
+      - "5432:5432"
+    volumes:
+      - smartdb_data:/var/lib/postgresql/data
+
+volumes:
+  smartdb_data:
