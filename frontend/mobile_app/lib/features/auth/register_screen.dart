@@ -3,7 +3,6 @@ import 'auth_api.dart';
 
 class RegisterScreen extends StatefulWidget {
   final AuthApi authApi;
-
   const RegisterScreen({super.key, required this.authApi});
 
   @override
@@ -22,9 +21,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
+  void _snack(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   Future<void> _register() async {
     FocusScope.of(context).unfocus();
@@ -52,10 +50,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create account'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Create account'), centerTitle: true),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -67,13 +62,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 children: [
                   Text(
                     'Let’s get you started',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 6),
                   Text(
                     'Create your account in seconds',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: cs.onSurfaceVariant),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -105,7 +106,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     onPressed: _loading ? null : _register,
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     child: Text(_loading ? 'Loading...' : 'Register'),
                   ),

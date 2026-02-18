@@ -7,7 +7,8 @@ class TokenStore {
   TokenStore({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
 
-  Future<void> saveToken(String token) => _storage.write(key: _key, value: token);
+  Future<void> saveToken(String token) =>
+      _storage.write(key: _key, value: token);
 
   Future<String?> readToken() => _storage.read(key: _key);
 

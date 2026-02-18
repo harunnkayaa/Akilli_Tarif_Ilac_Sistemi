@@ -1,14 +1,13 @@
-"""DB ping router."""
-from fastapi import APIRouter, HTTPException
-from app.core.database import db_ping
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+
+from app.core.database import get_db
 
 router = APIRouter(prefix="/db", tags=["db"])
 
 
 @router.get("/ping")
-def db_ping_route():
-    try:
-        db_ping()
-    except Exception:
-        raise HTTPException(status_code=503, detail="db unavailable")
-    return {"db": "ok"}
+def db_ping(db: Session = Depends(get_db)):
+    db.execute(text("SELECT 1"))
+    return {"status": "ok"}

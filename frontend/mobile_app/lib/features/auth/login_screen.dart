@@ -3,7 +3,6 @@ import 'auth_api.dart';
 
 class LoginScreen extends StatefulWidget {
   final AuthApi authApi;
-
   const LoginScreen({super.key, required this.authApi});
 
   @override
@@ -22,9 +21,8 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
+  void _snack(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   Future<void> _login() async {
     FocusScope.of(context).unfocus();
@@ -37,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/profile');
+      Navigator.pushReplacementNamed(context, '/main');
     } catch (e) {
       if (!mounted) return;
       _snack('Login failed: $e');
@@ -64,13 +62,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 12),
                   Text(
                     'Welcome back',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 6),
                   Text(
                     'Sign in to continue',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: cs.onSurfaceVariant),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -101,7 +105,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: _loading ? null : _login,
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     child: Text(_loading ? 'Loading...' : 'Login'),
                   ),
@@ -109,20 +115,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 10),
 
                   OutlinedButton(
-                    onPressed: _loading ? null : () => Navigator.pushNamed(context, '/register'),
+                    onPressed: _loading
+                        ? null
+                        : () => Navigator.pushNamed(context, '/register'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     child: const Text('Create account'),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  Text(
-                    'Tip: Use test99@example.com / 123456 for quick testing.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                    textAlign: TextAlign.center,
                   ),
                 ],
               ),

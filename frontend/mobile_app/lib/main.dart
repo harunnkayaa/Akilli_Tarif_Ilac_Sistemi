@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+
 import 'core/api_client.dart';
 import 'core/token_store.dart';
+
 import 'features/auth/auth_api.dart';
 import 'features/auth/boot_screen.dart';
+import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
+import 'features/main/main_screen.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -24,10 +26,19 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
+        inputDecorationTheme: const InputDecorationTheme(
+          border: OutlineInputBorder(),
+        ),
       ),
       routes: {
         '/': (_) => BootScreen(authApi: authApi),
+        '/login': (_) => LoginScreen(authApi: authApi),
         '/register': (_) => RegisterScreen(authApi: authApi),
+        '/main': (_) => MainScreen(
+          authApi: authApi,
+          client: client,
+          tokenStore: tokenStore,
+        ),
       },
     );
   }

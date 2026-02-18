@@ -1,4 +1,5 @@
 from pathlib import Path
+from app.core import models  # noqa: F401
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
