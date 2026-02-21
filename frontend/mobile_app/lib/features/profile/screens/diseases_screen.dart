@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../profile_api.dart';
 
@@ -60,9 +61,28 @@ class _DiseasesScreenState extends State<DiseasesScreen> {
     );
   }
 
+  void _showAlreadyExists() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Bu hastalık daha önce eklenmiştir.')),
+    );
+  }
+
+  bool _alreadyAdded(String diseaseName) {
+    final typed = diseaseName.trim().toLowerCase();
+    for (final it in _items) {
+      final m = it as Map;
+      final name = (m['disease_name']?.toString() ?? '').trim().toLowerCase();
+      if (name == typed) return true;
+    }
+    return false;
+  }
+
   Future<void> _add() async {
     final nameCtrl = TextEditingController();
     final notesCtrl = TextEditingController();
+
+    // seçilen hastalığı dialogdan dışarı taşımak için
+    String? pickedDisease;
 
     final ok = await showDialog<bool>(
       context: context,
@@ -71,17 +91,32 @@ class _DiseasesScreenState extends State<DiseasesScreen> {
         bool searching = false;
         Timer? debounce;
 
+        // “Sonuç bulunamadı”yı doğru kontrol etmek için:
+        // - en son aranan query
+        // - arama yapıldı mı
+        // - kullanıcı listeden seçim yaptı mı
+        String lastQuery = '';
+        bool searchAttempted = false;
+        bool picked = false;
+
         Future<void> runSearch(String q, void Function(void Function()) setLocal) async {
           final query = q.trim();
           if (query.length < 2) {
             setLocal(() {
               suggestions = [];
               searching = false;
+              searchAttempted = false;
+              lastQuery = '';
             });
             return;
           }
 
-          setLocal(() => searching = true);
+          setLocal(() {
+            searching = true;
+            searchAttempted = true;
+            lastQuery = query;
+          });
+
           try {
             final res = await widget.api.searchKnownDiseases(query);
             setLocal(() => suggestions = res);
@@ -95,11 +130,23 @@ class _DiseasesScreenState extends State<DiseasesScreen> {
         return StatefulBuilder(
           builder: (ctx, setLocal) {
             void triggerSearch(String v) {
+              // kullanıcı tekrar yazdıysa artık "picked" değil
+              picked = false;
+              pickedDisease = null;
+
               debounce?.cancel();
               debounce = Timer(const Duration(milliseconds: 250), () {
                 runSearch(v, setLocal);
               });
             }
+
+            final showNoResults =
+                !searching &&
+                    !picked &&
+                    searchAttempted &&
+                    nameCtrl.text.trim().length >= 2 &&
+                    suggestions.isEmpty &&
+                    nameCtrl.text.trim() == lastQuery;
 
             return AlertDialog(
               title: const Text('Hastalık Ekle'),
@@ -118,20 +165,7 @@ class _DiseasesScreenState extends State<DiseasesScreen> {
                           prefixIcon: const Icon(Icons.search),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                         ),
-                        onChanged: (v) => triggerSearch(v),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Icon(Icons.info_outline, size: 16, color: Theme.of(context).colorScheme.outline),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              '  ',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                        ],
+                        onChanged: triggerSearch,
                       ),
                       const SizedBox(height: 10),
 
@@ -147,7 +181,7 @@ class _DiseasesScreenState extends State<DiseasesScreen> {
                           ),
                         ),
 
-                      if (!searching && nameCtrl.text.trim().length >= 2 && suggestions.isEmpty)
+                      if (showNoResults)
                         Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
@@ -174,7 +208,12 @@ class _DiseasesScreenState extends State<DiseasesScreen> {
                                   leading: const Icon(Icons.monitor_heart),
                                   title: Text(s, maxLines: 1, overflow: TextOverflow.ellipsis),
                                   onTap: () {
+                                    // seçim yapıldı → “sonuç bulunamadı” kapanmalı
+                                    picked = true;
+                                    pickedDisease = s;
+
                                     nameCtrl.text = s;
+                                    // önerileri kapat
                                     setLocal(() => suggestions = []);
                                   },
                                 );
@@ -225,8 +264,15 @@ class _DiseasesScreenState extends State<DiseasesScreen> {
 
     if (ok != true) return;
 
-    final typed = nameCtrl.text.trim();
+    // Eğer listeden seçim yaptıysa onu kullan (daha temiz)
+    final typed = (pickedDisease ?? nameCtrl.text).trim();
     if (typed.isEmpty) return;
+
+    // ✅ Daha önce eklenmiş mi? (lokalde yakala)
+    if (_alreadyAdded(typed)) {
+      _showAlreadyExists();
+      return;
+    }
 
     try {
       await widget.api.addDisease(
@@ -240,8 +286,15 @@ class _DiseasesScreenState extends State<DiseasesScreen> {
         const SnackBar(content: Text('Hastalık başarıyla eklendi.')),
       );
       _load();
+    } on DioException catch (e) {
+      // Eğer backend duplicate için 409/400 gibi dönüyorsa burada yakalarsın
+      final code = e.response?.statusCode;
+      if (code == 409) {
+        _showAlreadyExists();
+        return;
+      }
+      await _showAddFailedDialog();
     } catch (_) {
-      // Dataset/WHO limit yoksa düzgün uyarı ver
       await _showAddFailedDialog();
     }
   }
@@ -319,7 +372,6 @@ class _DiseasesScreenState extends State<DiseasesScreen> {
                 },
               ),
             ),
-
             const SizedBox(height: 12),
 
             // ✅ Belirgin uyarı kartı

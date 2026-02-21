@@ -11,6 +11,7 @@ bearer = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
+    
     db: Session = Depends(get_db),
     creds: HTTPAuthorizationCredentials = Depends(bearer),
 ):

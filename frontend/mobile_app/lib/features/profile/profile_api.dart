@@ -55,28 +55,29 @@ class ProfileApi {
 
   // ---------------- Allergies ----------------
 
-  Future<List<dynamic>> listAllergies() async {
-    final res = await _dio.get('/profile/allergies');
-    return (res.data as List).toList();
-  }
+// Allergies
 
-  Future<void> addAllergy({
-    required String ingredientId,
+    // Allergies
+    Future<List<dynamic>> listAllergies() async {
+      final res = await _dio.get('/profile/allergies');
+      return (res.data as List).toList();
+    }
+
+  Future<void> addAllergyRawText({
+    required String rawText,
     String? reaction,
     String? notes,
   }) async {
     await _dio.post('/profile/allergies', data: {
-      'ingredient_id': ingredientId,
+      'raw_text': rawText,
       'reaction': reaction,
       'notes': notes,
     });
   }
 
-  Future<void> deleteAllergy(String ingredientId) async {
-    final safe = Uri.encodeComponent(ingredientId);
-    await _dio.delete('/profile/allergies/$safe');
-  }
-
+    Future<void> deleteAllergy(int allergyId) async {
+      await _dio.delete('/profile/allergies/$allergyId');
+    }
   // ---------------- Disliked Ingredients ----------------
 
   Future<List<dynamic>> listDisliked() async {
@@ -84,18 +85,17 @@ class ProfileApi {
     return (res.data as List).toList();
   }
 
-  Future<void> addDisliked({
-    required String ingredientId,
+  Future<void> addDislikedRawText({
+    required String rawText,
     String? reason,
   }) async {
     await _dio.post('/profile/disliked-ingredients', data: {
-      'ingredient_id': ingredientId,
+      'raw_text': rawText,
       'reason': reason,
     });
   }
 
-  Future<void> deleteDisliked(String ingredientId) async {
-    final safe = Uri.encodeComponent(ingredientId);
-    await _dio.delete('/profile/disliked-ingredients/$safe');
+  Future<void> deleteDisliked(int dislikedId) async {
+    await _dio.delete('/profile/disliked-ingredients/$dislikedId');
   }
 }

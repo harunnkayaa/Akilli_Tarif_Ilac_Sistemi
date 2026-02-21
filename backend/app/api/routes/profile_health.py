@@ -29,17 +29,25 @@ def delete_disliked(ingredient_id: str, db: Session = Depends(get_db), current_u
     return {"status": "ok"}
 
 # -------- allergies --------
+# -------- allergies --------
 @router.get("/allergies", response_model=list[AllergyOut])
 def get_allergies(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     return list_allergies(db, current_user.user_id)
 
 @router.post("/allergies", response_model=AllergyOut)
 def post_allergy(payload: AllergyCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    return add_allergy(db, current_user.user_id, payload)
+    try:
+        return add_allergy(db, current_user.user_id, payload)
+    except ValueError as e:
+        # duplicate
+        if str(e) == "already_exists":
+            from fastapi import HTTPException
+            raise HTTPException(status_code=409, detail="already exists")
+        raise
 
-@router.delete("/allergies/{ingredient_id}")
-def delete_allergy(ingredient_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    remove_allergy(db, current_user.user_id, ingredient_id)
+@router.delete("/allergies/{allergy_id}")
+def delete_allergy(allergy_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    remove_allergy(db, current_user.user_id, allergy_id)
     return {"status": "ok"}
 
 # -------- diseases --------
