@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
-
+import re
 from app.core.database import get_db
 from app.core.crud.users import get_user_by_email, create_user
 from app.core.security import hash_password, verify_password, create_access_token
@@ -11,7 +11,14 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 class RegisterIn(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=6)
+    password: str = Field(min_length=8)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str):
+        if not re.match(r"^(?=.*[A-Za-z])(?=.*\d).{8,}$", v):
+            raise ValueError("password must be at least 8 chars and include letters and digits")
+        return v
 
 
 class RegisterOut(BaseModel):

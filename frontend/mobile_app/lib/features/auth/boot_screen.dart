@@ -19,7 +19,6 @@ class _BootScreenState extends State<BootScreen> {
   Future<void> _boot() async {
     final ok = await widget.authApi.hasValidSession();
     if (!mounted) return;
-
     Navigator.pushReplacementNamed(context, ok ? '/main' : '/login');
   }
 

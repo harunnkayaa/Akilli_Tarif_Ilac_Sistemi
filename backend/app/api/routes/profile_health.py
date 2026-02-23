@@ -15,20 +15,27 @@ from app.core.crud.diseases import list_diseases, add_disease, remove_disease
 router = APIRouter(prefix="/profile", tags=["profile-health"])
 
 # -------- disliked ingredients --------
+from fastapi import HTTPException
+
 @router.get("/disliked-ingredients", response_model=list[DislikedIngredientOut])
 def get_disliked(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     return list_disliked(db, current_user.user_id)
 
 @router.post("/disliked-ingredients", response_model=DislikedIngredientOut)
 def post_disliked(payload: DislikedIngredientCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    return add_disliked(db, current_user.user_id, payload)
+    try:
+        return add_disliked(db, current_user.user_id, payload)
+    except ValueError as e:
+        if str(e) == "already_exists":
+            raise HTTPException(status_code=409, detail="already exists")
+        raise
 
-@router.delete("/disliked-ingredients/{ingredient_id}")
-def delete_disliked(ingredient_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    remove_disliked(db, current_user.user_id, ingredient_id)
+@router.delete("/disliked-ingredients/{disliked_id}")
+def delete_disliked(disliked_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    remove_disliked(db, current_user.user_id, disliked_id)
     return {"status": "ok"}
+  
 
-# -------- allergies --------
 # -------- allergies --------
 @router.get("/allergies", response_model=list[AllergyOut])
 def get_allergies(db: Session = Depends(get_db), current_user=Depends(get_current_user)):

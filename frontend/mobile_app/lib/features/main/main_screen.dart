@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/api_client.dart';
 import '../../core/token_store.dart';
-
+import '../drugs/screens/drugs_screen.dart';
 import '../auth/auth_api.dart';
 import '../profile/profile_screen.dart';
 
@@ -26,10 +26,15 @@ class _MainScreenState extends State<MainScreen> {
   int _index = 0;
 
   @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final screens = [
       const _Placeholder(title: 'Home'),
-      const _Placeholder(title: 'Medicines'),
+      DrugsScreen(client: widget.client),
       const _Placeholder(title: 'Market'),
       const _Placeholder(title: 'Recipes'),
       ProfileScreen(
@@ -45,7 +50,7 @@ class _MainScreenState extends State<MainScreen> {
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.medication), label: 'İlaç'),
+          NavigationDestination(icon: Icon(Icons.vaccines_rounded), label: 'İlaç'),
           NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Market'),
           NavigationDestination(icon: Icon(Icons.restaurant), label: 'Tarif'),
           NavigationDestination(icon: Icon(Icons.person), label: 'Profil'),
