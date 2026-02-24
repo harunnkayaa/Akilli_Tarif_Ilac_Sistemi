@@ -1,8 +1,9 @@
 import uuid
-from sqlalchemy import Column, Integer, Boolean, Time, Text, ForeignKey  # Integer burada days_mask için kalabilir
+from sqlalchemy import Column, Integer, Boolean, Time, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+
 
 class UserDrugSchedule(Base):
     __tablename__ = "user_drug_schedule"

@@ -6,11 +6,10 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-# ---------- Schedule ----------
 class ScheduleIn(BaseModel):
     time_of_day: time
     dose_text: Optional[str] = None
-    days_mask: int = Field(default=127, ge=0)  # 0..127 (7 bit)
+    days_mask: int = Field(default=127, ge=0)
     is_active: bool = True
 
 
@@ -21,7 +20,6 @@ class ScheduleOut(ScheduleIn):
         from_attributes = True
 
 
-# ---------- Inventory ----------
 class InventoryIn(BaseModel):
     quantity: int = Field(ge=0)
     unit: Optional[str] = None
@@ -36,7 +34,6 @@ class InventoryOut(InventoryIn):
         from_attributes = True
 
 
-# ---------- Drug ----------
 class UserDrugCreate(BaseModel):
     drug_name: str = Field(min_length=1)
     atc_code: Optional[str] = None
@@ -55,8 +52,8 @@ class UserDrugUpdate(BaseModel):
     end_date: Optional[date] = None
     notes: Optional[str] = None
 
-    schedules: Optional[List[ScheduleIn]] = None  # None => dokunma, [] => temizle
-    inventory: Optional[InventoryIn] = None       # None => dokunma, obj => upsert
+    schedules: Optional[List[ScheduleIn]] = None
+    inventory: Optional[InventoryIn] = None
 
 
 class UserDrugOut(BaseModel):
@@ -71,7 +68,6 @@ class UserDrugOut(BaseModel):
     schedules: List[ScheduleOut] = Field(default_factory=list)
     inventory: Optional[InventoryOut] = None
 
-    # computed (UI kolaylığı)
     schedule_count_active: int = 0
     low_stock: bool = False
 
@@ -79,5 +75,4 @@ class UserDrugOut(BaseModel):
         from_attributes = True
 
 
-# Interactions: kolonlar bilinmediği için generic dönüyoruz
 InteractionRow = Dict[str, Any]

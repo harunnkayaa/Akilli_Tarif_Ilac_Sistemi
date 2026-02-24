@@ -10,13 +10,36 @@ from app.core.database import get_db
 from app.core.schemas.drugs import UserDrugCreate, UserDrugUpdate, UserDrugOut, InteractionRow
 from app.core.crud import drugs as crud
 
-# Burayı projendeki auth dependency'ye göre düzelt:
-# Çoğu projede: from app.api.deps import get_current_user
-# ve current_user.user_id kullanılır.
 from app.api.deps import get_current_user
+from sqlalchemy.orm import joinedload
+from app.core.models.user_drug import UserDrug
 
 router = APIRouter(prefix="/drugs", tags=["drugs"])
 
+@router.get("/{user_drug_id}", response_model=UserDrugOut)
+def get_drug(
+    user_drug_id: UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    drug = (
+        db.query(UserDrug)
+        .options(joinedload(UserDrug.schedules), joinedload(UserDrug.inventory))
+        .filter(UserDrug.user_drug_id == user_drug_id, UserDrug.user_id == current_user.user_id)
+        .first()
+    )
+    if not drug:
+        raise HTTPException(status_code=404, detail="Drug not found")
+
+    active_count = sum(1 for s in (drug.schedules or []) if s.is_active)
+    low_stock = False
+    if drug.inventory is not None:
+        low_stock = drug.inventory.quantity <= drug.inventory.low_threshold
+
+    item = UserDrugOut.model_validate(drug)
+    item.schedule_count_active = active_count
+    item.low_stock = low_stock
+    return item
 
 @router.get("/suggest", response_model=List[str])
 def suggest(q: str = Query(..., min_length=1), db: Session = Depends(get_db)):
@@ -109,7 +132,6 @@ def interactions(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    # önce bu ilaç current_user'a mı ait kontrolü listeden yapıyoruz (kolay MVP)
     drugs = crud.list_user_drugs(db, user_id=current_user.user_id)
     target = next((d for d in drugs if d.user_drug_id == user_drug_id), None)
     if not target:

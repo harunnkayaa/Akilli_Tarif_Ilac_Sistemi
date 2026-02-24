@@ -8,7 +8,6 @@ class ApiClient {
       : dio = Dio(
     BaseOptions(
       baseUrl: 'http://10.0.2.2:8000',
-      //baseUrl: 'http://192.168.1.171:8000',
       connectTimeout: const Duration(seconds: 12),
       receiveTimeout: const Duration(seconds: 12),
       headers: {'Content-Type': 'application/json'},
@@ -17,34 +16,42 @@ class ApiClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = await tokenStore.readToken();
+          final raw = await tokenStore.readToken();
+          final token = raw?.trim(); // ✅ KRİTİK: boşluk/newline öldürür
 
-          // Kanıt: token var mı?
           final hasToken = token != null && token.isNotEmpty;
-          // ignore: avoid_print
-          print('[API] ${options.method} ${options.uri} token=${hasToken ? "yes" : "no"} len=${token?.length ?? 0}');
 
           if (hasToken) {
             options.headers['Authorization'] = 'Bearer $token';
+          } else {
+            options.headers.remove('Authorization');
           }
+
+          // ✅ KANIT: Authorization gerçekten set mi?
+          final auth = options.headers['Authorization']?.toString();
+          // ignore: avoid_print
+          print('[API] ${options.method} ${options.uri}');
+          // ignore: avoid_print
+          print('[API] hasToken=$hasToken rawLen=${raw?.length ?? 0} trimLen=${token?.length ?? 0}');
+          // ignore: avoid_print
+          print('[API] Authorization=${auth == null ? "NULL" : auth.substring(0, auth.length > 20 ? 20 : auth.length)}...');
+
           handler.next(options);
         },
-        onError: (e, handler) async {
-          // Debug sırasında token silmek YASAK. Sadece logla.
+        onError: (e, handler) {
           // ignore: avoid_print
-          print('[API][ERR] status=${e.response?.statusCode} path=${e.requestOptions.uri}');
+          print('[API][ERR] status=${e.response?.statusCode} uri=${e.requestOptions.uri}');
           handler.next(e);
         },
       ),
     );
 
-    // İstersen response body/snippet görmek için:
     dio.interceptors.add(
       LogInterceptor(
-        requestHeader: true,
-        requestBody: false,
+        requestHeader: true, // ✅ header gör
+        requestBody: true,   // ✅ PUT payload gör
         responseHeader: false,
-        responseBody: false,
+        responseBody: true,
         error: true,
       ),
     );

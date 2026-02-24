@@ -175,7 +175,8 @@ class _DrugsScreenState extends State<DrugsScreen> {
             final d = items[i] as Map<String, dynamic>;
             final name = (d['drug_name'] ?? '').toString();
             final lowStock = (d['low_stock'] ?? false) == true;
-            final scheduleCount = (d['schedule_count_active'] ?? 0).toString();
+            final scheduleCount =
+            (d['schedule_count_active'] ?? 0).toString();
 
             return InkWell(
               borderRadius: BorderRadius.circular(16),
@@ -183,7 +184,8 @@ class _DrugsScreenState extends State<DrugsScreen> {
                 final changed = await Navigator.push<bool>(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => DrugDetailScreen(client: widget.client, drug: d),
+                    builder: (_) =>
+                        DrugDetailScreen(client: widget.client, drug: d),
                   ),
                 );
                 if (changed == true) _load();
@@ -197,7 +199,9 @@ class _DrugsScreenState extends State<DrugsScreen> {
                 child: Row(
                   children: [
                     Icon(
-                      lowStock ? Icons.warning_amber_rounded : Icons.medication_outlined,
+                      lowStock
+                          ? Icons.warning_amber_rounded
+                          : Icons.medication_outlined,
                       size: 28,
                     ),
                     const SizedBox(width: 12),
@@ -205,7 +209,8 @@ class _DrugsScreenState extends State<DrugsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(name, style: Theme.of(context).textTheme.titleMedium),
+                          Text(name,
+                              style: Theme.of(context).textTheme.titleMedium),
                           const SizedBox(height: 6),
                           Text('Aktif saat: $scheduleCount'),
                         ],
@@ -213,7 +218,8 @@ class _DrugsScreenState extends State<DrugsScreen> {
                     ),
                     if (lowStock)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(999),
                           color: Colors.orange.withOpacity(0.15),

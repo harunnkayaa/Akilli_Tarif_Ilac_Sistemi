@@ -16,7 +16,7 @@ class UserDrug(Base):
 
     drug_name = Column(Text, nullable=False)
     atc_code = Column(Text, nullable=True)
-    drug_class = Column(Text, nullable=True)  # UI'dan istemiyorsun; DB'de kalsın, nullable.
+    drug_class = Column(Text, nullable=True)
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     notes = Column(Text, nullable=True)

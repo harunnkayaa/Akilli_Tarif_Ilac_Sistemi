@@ -373,7 +373,8 @@ class _DrugFormScreenState extends State<DrugFormScreen> {
             ),
             const SizedBox(height: 18),
 
-            Text('Kullanım Saatleri', style: Theme.of(context).textTheme.titleMedium),
+            Text('Kullanım Saatleri',
+                style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
 
             if (schedules.isEmpty)
@@ -387,7 +388,8 @@ class _DrugFormScreenState extends State<DrugFormScreen> {
                   children: [
                     Icon(Icons.info_outline),
                     SizedBox(width: 10),
-                    Expanded(child: Text('Henüz saat eklemedin. “Saat ekle” ile ekle.')),
+                    Expanded(
+                        child: Text('Henüz saat eklemedin. “Saat ekle” ile ekle.')),
                   ],
                 ),
               ),

@@ -11,7 +11,6 @@ from app.core.database import Base
 class DrugInventory(Base):
     __tablename__ = "drug_inventory"
 
-    # 1-1 garanti: PK = FK (DB constraint ile bunu enforce edeceksin)
     user_drug_id = Column(
         UUID(as_uuid=True),
         ForeignKey("user_drugs.user_drug_id", ondelete="CASCADE"),
@@ -19,7 +18,7 @@ class DrugInventory(Base):
     )
 
     quantity = Column(Integer, nullable=False, default=0)
-    unit = Column(Text, nullable=True)  # "tablet", "kapsül"...
+    unit = Column(Text, nullable=True)
     low_threshold = Column(Integer, nullable=False, default=0)
 
     last_updated = Column(

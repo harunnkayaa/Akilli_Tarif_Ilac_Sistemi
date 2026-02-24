@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import '../../core/api_client.dart';
 
-
 class DrugsApi {
   final Dio _dio;
 
@@ -10,6 +9,11 @@ class DrugsApi {
   Future<List<dynamic>> listMyDrugs() async {
     final res = await _dio.get('/drugs');
     return (res.data as List).cast<dynamic>();
+  }
+
+  Future<Map<String, dynamic>> getDrug(String userDrugId) async {
+    final res = await _dio.get('/drugs/$userDrugId');
+    return Map<String, dynamic>.from(res.data as Map);
   }
 
   Future<List<String>> suggest(String q) async {
@@ -34,5 +38,25 @@ class DrugsApi {
   Future<List<dynamic>> interactions(String userDrugId) async {
     final res = await _dio.get('/drugs/$userDrugId/interactions');
     return (res.data as List).cast<dynamic>();
+  }
+
+  Future<Map<String, dynamic>> intake({
+    required String userDrugId,
+    required String clientEventId,
+    required String action, // "TAKEN" | "SNOOZE" | "SKIP"
+    String? scheduledAtIso,
+    int snoozeMinutes = 5,
+  }) async {
+    final res = await _dio.post(
+      '/intake',
+      data: {
+        'user_drug_id': userDrugId,
+        'client_event_id': clientEventId,
+        'action': action,
+        'scheduled_at': scheduledAtIso,
+        'snooze_minutes': snoozeMinutes,
+      },
+    );
+    return Map<String, dynamic>.from(res.data as Map);
   }
 }
