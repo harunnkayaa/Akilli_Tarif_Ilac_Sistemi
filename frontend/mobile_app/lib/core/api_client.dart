@@ -43,7 +43,7 @@ class ApiClient {
           print('[API][ERR] status=${e.response?.statusCode} uri=${e.requestOptions.uri}');
           handler.next(e);
         },
-      ),
+      ),git
     );
 
     dio.interceptors.add(
