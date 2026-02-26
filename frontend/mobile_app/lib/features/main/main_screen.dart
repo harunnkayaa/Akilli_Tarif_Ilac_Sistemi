@@ -6,6 +6,10 @@ import '../drugs/screens/drugs_screen.dart';
 import '../auth/auth_api.dart';
 import '../profile/profile_screen.dart';
 
+// ✅ ekle
+import '../kitchen/kitchen_api.dart';
+import '../kitchen/kitchen_home_screen.dart';
+
 class MainScreen extends StatefulWidget {
   final AuthApi authApi;
   final ApiClient client;
@@ -25,9 +29,12 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _index = 0;
 
+  late final KitchenApi kitchenApi;
+
   @override
   void initState() {
     super.initState();
+    kitchenApi = KitchenApi(widget.client.dio);
   }
 
   @override
@@ -35,7 +42,7 @@ class _MainScreenState extends State<MainScreen> {
     final screens = [
       const _Placeholder(title: 'Home'),
       DrugsScreen(client: widget.client),
-      const _Placeholder(title: 'Market'),
+      KitchenHomeScreen(api: kitchenApi),
       const _Placeholder(title: 'Recipes'),
       ProfileScreen(
         client: widget.client,
