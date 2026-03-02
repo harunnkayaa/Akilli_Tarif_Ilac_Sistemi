@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../auth/auth_api.dart';
+
 import '../../core/api_client.dart';
+import '../../core/app_colors.dart';
+import '../auth/auth_api.dart';
 import 'profile_api.dart';
 
 import 'screens/profile_edit_screen.dart';
@@ -127,15 +129,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Profil')),
-        body: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Hata: $_error', style: TextStyle(color: cs.error)),
-              const SizedBox(height: 12),
-              FilledButton(onPressed: _busy ? null : _load, child: const Text('Tekrar Dene')),
-            ],
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFE8F4F8),
+                Color(0xFFF5F5F0),
+              ],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Hata: $_error', style: TextStyle(color: cs.error)),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: _busy ? null : _load,
+                  child: const Text('Tekrar Dene'),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -170,117 +187,159 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: cs.primaryContainer,
-                  child: Icon(Icons.person, color: cs.onPrimaryContainer),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(email, style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle.isEmpty ? 'Profil bilgilerinizi tamamlayın' : subtitle,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.backgroundTop,
+              AppColors.backgroundBottom,
+            ],
+          ),
+        ),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          Text('Profil Ayarları', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
-
-          _MenuTile(
-            icon: Icons.edit,
-            title: 'Kişisel Bilgiler',
-            subtitle: hasProfile ? 'Bilgileri güncelle' : 'Profil oluştur',
-            onTap: () async {
-              final saved = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProfileEditScreen(
-                    api: _api,
-                    initial: _profile ?? const {},
+                ],
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: cs.primaryContainer,
+                    child: Icon(Icons.person, color: cs.onPrimaryContainer),
                   ),
-                ),
-              );
-
-              // ✅ sadece reload. SnackBar yok.
-              if (saved == true) {
-                await _load();
-              }
-            },
-          ),
-          const SizedBox(height: 10),
-
-          _MenuTile(
-            icon: Icons.monitor_heart,
-            title: 'Hastalıklar',
-            subtitle: 'Kronik hastalıklar (filtreleme)',
-            onTap: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => DiseasesScreen(api: _api)),
-              );
-            },
-          ),
-          const SizedBox(height: 10),
-
-          _MenuTile(
-            icon: Icons.warning_amber,
-            title: 'Alerjiler',
-            subtitle: 'Mutlak eleme (allergen)',
-            onTap: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => AllergiesScreen(api: _api, client: widget.client)),
-              );
-            },
-          ),
-          const SizedBox(height: 10),
-
-          _MenuTile(
-            icon: Icons.block,
-            title: 'Sevmediğim Besinler',
-            subtitle: 'Tercih filtresi',
-            onTap: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => DislikedIngredientsScreen(api: _api, client: widget.client)),
-              );
-            },
-          ),
-
-          const SizedBox(height: 18),
-          Text('Hesap', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
-
-          _MenuTile(
-            icon: Icons.logout,
-            title: 'Çıkış',
-            subtitle: null,
-            danger: true,
-            onTap: _busy ? null : _confirmLogout,
-          ),
-        ],
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          email,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle.isEmpty
+                              ? 'Profil bilgilerinizi tamamlayın'
+                              : subtitle,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Profil Ayarları',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            _MenuTile(
+              icon: Icons.edit,
+              title: 'Kişisel Bilgiler',
+              subtitle: hasProfile ? 'Bilgileri güncelle' : 'Profil oluştur',
+              onTap: () async {
+                final saved = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProfileEditScreen(
+                      api: _api,
+                      initial: _profile ?? const {},
+                    ),
+                  ),
+                );
+                if (saved == true) {
+                  await _load();
+                }
+              },
+            ),
+            const SizedBox(height: 10),
+            _MenuTile(
+              icon: Icons.monitor_heart,
+              title: 'Hastalıklar',
+              subtitle: 'Kronik hastalıklar (filtreleme)',
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DiseasesScreen(api: _api),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            _MenuTile(
+              icon: Icons.warning_amber,
+              title: 'Alerjiler',
+              subtitle: 'Mutlak eleme (allergen)',
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AllergiesScreen(
+                      api: _api,
+                      client: widget.client,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            _MenuTile(
+              icon: Icons.block,
+              title: 'Sevmediğim Besinler',
+              subtitle: 'Tercih filtresi',
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DislikedIngredientsScreen(
+                      api: _api,
+                      client: widget.client,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Hesap',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            _MenuTile(
+              icon: Icons.logout,
+              title: 'Çıkış',
+              subtitle: null,
+              danger: true,
+              onTap: _busy ? null : _confirmLogout,
+            ),
+          ],
+        ),
       ),
     );
   }

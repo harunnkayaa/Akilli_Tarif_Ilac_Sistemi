@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+
+import '../../core/app_colors.dart';
 import 'kitchen_api.dart';
 
 class ShoppingListScreen extends StatefulWidget {
@@ -255,6 +257,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Alışveriş Listesi'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
+        elevation: 2,
         actions: [
           IconButton(
             icon: const Icon(Icons.autorenew),
@@ -267,16 +272,28 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openManualAdd,
+        backgroundColor: AppColors.accent,
         child: const Icon(Icons.add),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-        onRefresh: _load,
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: _items.length,
-          itemBuilder: (_, i) {
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.backgroundTop,
+              AppColors.backgroundBottom,
+            ],
+          ),
+        ),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _items.length,
+                  itemBuilder: (_, i) {
             final m = _items[i] as Map<String, dynamic>;
             final id = m['item_id'].toString();
             final checked = m['is_checked'] == true;
@@ -287,6 +304,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
             final unit = m['unit'];
 
             return Card(
+              color: AppColors.surface,
+              elevation: 2,
               child: ListTile(
                 leading: Checkbox(
                   value: checked,
@@ -314,6 +333,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
             );
           },
         ),
+      ),
       ),
     );
   }

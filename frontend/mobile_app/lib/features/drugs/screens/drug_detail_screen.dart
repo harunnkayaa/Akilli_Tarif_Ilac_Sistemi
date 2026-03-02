@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../core/api_client.dart';
+import '../../../core/app_colors.dart';
 import '../drugs_api.dart';
 import '../services/notification_service.dart';
 import 'drug_form_screen.dart';
@@ -356,6 +357,8 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
 
               try {
                 final id = d['user_drug_id'].toString();
+                // Bu ilaç için tüm bildirimleri iptal et
+                await NotificationService.cancelAllForDrug(d);
                 await api.deleteDrug(id);
                 if (!mounted) return;
                 Navigator.pop(context, true);
@@ -369,210 +372,415 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshDrug,
-        child: ListView(
-          padding: const EdgeInsets.all(14),
-          children: [
-            if (!_handledLoaded)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 12),
-                child: LinearProgressIndicator(minHeight: 3),
-              ),
-
-            if (pending != null) ...[
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.backgroundTop,
+              AppColors.backgroundBottom,
+            ],
+          ),
+        ),
+        child: RefreshIndicator(
+          onRefresh: _refreshDrug,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (!_handledLoaded)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: LinearProgressIndicator(minHeight: 3),
+                ),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.black12),
-                  color: Colors.black.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primaryLight,
+                      ),
+                      child: const Icon(
+                        Icons.vaccines_rounded,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            schedules.isEmpty
+                                ? 'Saat tanımlı değil'
+                                : 'Aktif saat: ${schedules.length}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (pending != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.primary.withOpacity(0.18),
+                        AppColors.surface,
+                      ],
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            pending['is_snooze'] == true
+                                ? Icons.snooze_rounded
+                                : Icons.alarm_rounded,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            pending['is_snooze'] == true
+                                ? 'Ertelenen doz'
+                                : (timeArrived ? 'Zamanı gelen doz' : 'Zamanı yaklaşan doz'),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Saat: ${pending['time_of_day']} • Doz: ${pending['dose_text']}',
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: _intakeBusy
+                                  ? null
+                                  : () => _doIntake(
+                                        action: 'TAKEN',
+                                        userDrugId: userDrugId,
+                                        timeStr: pending['time_of_day']
+                                            .toString(),
+                                        scheduledAtIso: pending[
+                                                'scheduled_at_iso']
+                                            .toString(),
+                                        baseEventId: pending['base_event_id']
+                                            .toString(),
+                                      ),
+                              child: const Text('Aldım'),
+                            ),
+                          ),
+                          if (timeArrived) ...[
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _intakeBusy
+                                    ? null
+                                    : () => _doIntake(
+                                          action: 'SNOOZE',
+                                          userDrugId: userDrugId,
+                                          timeStr: pending['time_of_day']
+                                              .toString(),
+                                          scheduledAtIso: pending[
+                                                  'scheduled_at_iso']
+                                              .toString(),
+                                          baseEventId: pending['base_event_id']
+                                              .toString(),
+                                        ),
+                                child: const Text('Ertele'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _intakeBusy
+                                    ? null
+                                    : () => _doIntake(
+                                          action: 'SKIP',
+                                          userDrugId: userDrugId,
+                                          timeStr: pending['time_of_day']
+                                              .toString(),
+                                          scheduledAtIso: pending[
+                                                  'scheduled_at_iso']
+                                              .toString(),
+                                          baseEventId: pending['base_event_id']
+                                              .toString(),
+                                        ),
+                                child: const Text('Atla'),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      (pending['is_snooze'] == true)
-                          ? 'Ertelenen doz'
-                          : 'Zamanı gelen doz',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      'Kullanım saatleri',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
+                    if (schedules.isEmpty)
+                      const Text('Saat yok.')
+                    else
+                      ...schedules.map((s) {
+                        final time = s['time_of_day'].toString();
+                        final dose = (s['dose_text'] ?? '').toString();
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            color: AppColors.primaryLight,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.schedule_rounded, size: 20),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      time,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.copyWith(
+                                              fontWeight: FontWeight.w500),
+                                    ),
+                                    if (dose.trim().isNotEmpty) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Doz: $dose',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      'Saat: ${pending['time_of_day']} • Doz: ${pending['dose_text']}',
+                      'Stok',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: _intakeBusy
-                                ? null
-                                : () => _doIntake(
-                              action: 'TAKEN',
-                              userDrugId: userDrugId,
-                              timeStr: pending['time_of_day'].toString(),
-                              scheduledAtIso: pending['scheduled_at_iso'].toString(),
-                              baseEventId: pending['base_event_id'].toString(),
+                    const SizedBox(height: 8),
+                    if (inv == null)
+                      const Text('Stok bilgisi girilmemiş.')
+                    else
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.inventory_2_outlined),
+                        title: Text('${inv['quantity']} ${inv['unit']}'),
+                        subtitle:
+                            Text('Azaldı eşiği: ${inv['low_threshold']}'),
+                      ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final ok = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DrugFormScreen(
+                                client: widget.client,
+                                existingDrug: _drug,
+                              ),
                             ),
-                            child: const Text('Aldım'),
+                          );
+                          if (ok == true) {
+                            if (!mounted) return;
+                            await _refreshDrug();
+                          }
+                        },
+                        icon: const Icon(Icons.edit_rounded, size: 22),
+                        label: const Text('Saat/Stok Düzenle'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        if (timeArrived) ...[
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: _intakeBusy
-                                  ? null
-                                  : () => _doIntake(
-                                action: 'SNOOZE',
-                                userDrugId: userDrugId,
-                                timeStr: pending['time_of_day'].toString(),
-                                scheduledAtIso: pending['scheduled_at_iso'].toString(),
-                                baseEventId: pending['base_event_id'].toString(),
-                              ),
-                              child: const Text('Ertele'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: _intakeBusy
-                                  ? null
-                                  : () => _doIntake(
-                                action: 'SKIP',
-                                userDrugId: userDrugId,
-                                timeStr: pending['time_of_day'].toString(),
-                                scheduledAtIso: pending['scheduled_at_iso'].toString(),
-                                baseEventId: pending['base_event_id'].toString(),
-                              ),
-                              child: const Text('Atla'),
-                            ),
-                          ),
-                        ],
-                      ],
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
-            ],
-
-            Text('Kullanım saatleri', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-
-            if (schedules.isEmpty)
-              const Text('Saat yok.')
-            else
-              ...schedules.map((s) {
-                final time = s['time_of_day'].toString();
-                final dose = (s['dose_text'] ?? '').toString();
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.black12),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(top: 2),
-                        child: Icon(Icons.schedule_rounded),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(time, style: Theme.of(context).textTheme.titleMedium),
-                            if (dose.trim().isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text('Doz: $dose'),
-                            ],
-                          ],
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed:
+                            loadingInteractions ? null : _loadInteractions,
+                        icon: const Icon(Icons.restaurant_rounded, size: 22),
+                        label: const Text('Besin etkileşimlerini getir'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                );
-              }),
-
-            const SizedBox(height: 14),
-            Text('Stok', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-
-            if (inv == null)
-              const Text('Stok bilgisi girilmemiş.')
-            else
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.inventory_2_outlined),
-                title: Text('${inv['quantity']} ${inv['unit']}'),
-                subtitle: Text('Azaldı eşiği: ${inv['low_threshold']}'),
-              ),
-
-            OutlinedButton.icon(
-              onPressed: () async {
-                final ok = await Navigator.push<bool>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => DrugFormScreen(
-                      client: widget.client,
-                      existingDrug: _drug,
                     ),
-                  ),
-                );
-                if (ok == true) {
-                  if (!mounted) return;
-                  await _refreshDrug();
-                }
-              },
-              icon: const Icon(Icons.edit_rounded),
-              label: const Text('Saat/Stok Düzenle'),
-            ),
-
-            const SizedBox(height: 14),
-            FilledButton.icon(
-              onPressed: loadingInteractions ? null : _loadInteractions,
-              icon: const Icon(Icons.restaurant_rounded),
-              label: const Text('Besin etkileşimlerini getir'),
-            ),
-
-            const SizedBox(height: 10),
-            if (loadingInteractions)
-              const Center(child: CircularProgressIndicator()),
-            if (!loadingInteractions && interactions.isNotEmpty) ...[
-              Text('Etkileşimler', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              ...interactions.map((x) {
-                final m = x as Map<String, dynamic>;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.black12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                    const SizedBox(height: 12),
+                    if (loadingInteractions)
+                      const Center(child: CircularProgressIndicator()),
+                    if (!loadingInteractions && interactions.isNotEmpty) ...[
                       Text(
-                        m['food_name_tr'].toString(),
-                        style: Theme.of(context).textTheme.titleMedium,
+                        'Etkileşimler',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
                       ),
-                      const SizedBox(height: 6),
-                      Text('Etki: ${m['interaction_effect']}'),
-                      const SizedBox(height: 4),
-                      Text('Öneri: ${m['recommendation_tr']}'),
+                      const SizedBox(height: 8),
+                      ...interactions.map((x) {
+                        final m = x as Map<String, dynamic>;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            color: AppColors.primaryLight,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                m['food_name_tr'].toString(),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium,
+                              ),
+                              const SizedBox(height: 6),
+                              Text('Etki: ${m['interaction_effect']}'),
+                              const SizedBox(height: 4),
+                              Text('Öneri: ${m['recommendation_tr']}'),
+                            ],
+                          ),
+                        );
+                      }),
                     ],
-                  ),
-                );
-              }),
+                  ],
+                ),
+              ),
             ],
-          ],
+          ),
         ),
       ),
     );

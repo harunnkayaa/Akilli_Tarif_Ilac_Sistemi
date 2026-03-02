@@ -1,0 +1,11 @@
+"Tablo","Kolon","Veri Tipi","Null?","Kısıtlamalar"
+rag_documents,doc_id,uuid,NO,PRIMARY KEY
+rag_documents,source_table,text,NO,UNIQUE
+rag_documents,source_pk,text,NO,UNIQUE
+rag_documents,chunk_index,integer,NO,UNIQUE
+rag_documents,title,text,YES,
+rag_documents,content,text,NO,
+rag_documents,metadata,jsonb,NO,
+rag_documents,embedding,USER-DEFINED,YES,
+rag_documents,created_at,timestamp with time zone,NO,
+rag_documents,updated_at,timestamp with time zone,NO,

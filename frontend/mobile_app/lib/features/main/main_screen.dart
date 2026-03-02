@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../core/api_client.dart';
 import '../../core/token_store.dart';
-import '../drugs/screens/drugs_screen.dart';
 import '../auth/auth_api.dart';
-import '../profile/profile_screen.dart';
-
-// ✅ ekle
+import '../drugs/drugs_api.dart';
+import '../drugs/screens/drug_detail_screen.dart';
+import '../drugs/screens/drugs_screen.dart';
+import '../drugs/services/notification_service.dart';
 import '../kitchen/kitchen_api.dart';
 import '../kitchen/kitchen_home_screen.dart';
+import '../profile/profile_screen.dart';
+import '../recipes/recipe_mode_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final AuthApi authApi;
@@ -30,11 +32,52 @@ class _MainScreenState extends State<MainScreen> {
   int _index = 0;
 
   late final KitchenApi kitchenApi;
+  late final DrugsApi drugsApi;
 
   @override
   void initState() {
     super.initState();
     kitchenApi = KitchenApi(widget.client.dio);
+    drugsApi = DrugsApi(widget.client);
+
+    NotificationService.tappedPayload.addListener(_handleNotificationTap);
+    // Uygulama zaten açıkken tıklanmış bir payload varsa hemen işle
+    _handleNotificationTap();
+  }
+
+  @override
+  void dispose() {
+    NotificationService.tappedPayload.removeListener(_handleNotificationTap);
+    super.dispose();
+  }
+
+  Future<void> _handleNotificationTap() async {
+    final payload = NotificationService.tappedPayload.value;
+    if (payload == null) return;
+
+    // Aynı payload'ın tekrar işlenmesini engelle
+    NotificationService.tappedPayload.value = null;
+
+    final userDrugId = payload['user_drug_id'];
+    if (userDrugId == null || userDrugId.isEmpty) return;
+
+    try {
+      final drug = await drugsApi.getDrug(userDrugId);
+      if (!mounted) return;
+
+      setState(() => _index = 1); // İlaç sekmesine geç
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => DrugDetailScreen(
+            client: widget.client,
+            drug: drug,
+          ),
+        ),
+      );
+    } catch (_) {
+      // Sessizce geç; istenirse burada snackbar gösterilebilir.
+    }
   }
 
   @override
@@ -43,7 +86,7 @@ class _MainScreenState extends State<MainScreen> {
       const _Placeholder(title: 'Home'),
       DrugsScreen(client: widget.client),
       KitchenHomeScreen(api: kitchenApi),
-      const _Placeholder(title: 'Recipes'),
+      RecipeModeScreen(client: widget.client),
       ProfileScreen(
         client: widget.client,
         authApi: widget.authApi,

@@ -1,6 +1,8 @@
 // lib/features/kitchen/kitchen_home_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+
+import '../../core/app_colors.dart';
 import 'kitchen_api.dart';
 import 'shopping_list_screen.dart';
 import 'pantry_list_screen.dart';
@@ -340,222 +342,312 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mutfak Yönetimi'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
+        elevation: 2,
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    const Icon(Icons.local_fire_department_outlined),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Günlük Kalori', style: TextStyle(fontWeight: FontWeight.w900)),
-                          const SizedBox(height: 6),
-                          Text('${consumed.toInt()} / ${target.toInt()} kcal'),
-                          const SizedBox(height: 10),
-                          LinearProgressIndicator(value: progress),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.kitchen_outlined),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Mutfak Stok Yönetimi',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => _openAddDialog(),
-                          icon: const Icon(Icons.add_circle_outline),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    const Text('Hangi besinden ne kadar var kayıt edilir.', style: TextStyle(color: Colors.black54)),
-                    const SizedBox(height: 12),
-
-                    if (_pantry.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 18),
-                        child: Center(child: Text('Henüz stok yok. + ile ekle.')),
-                      )
-                    else
-                      Column(
-                        children: preview.map((e) {
-                          final m = e as Map<String, dynamic>;
-                          final name = m['ingredient_id']?.toString() ?? '-';
-                          final qty = _fmtQty(m['quantity']);
-                          final unit = m['unit']?.toString() ?? 'g';
-
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(Icons.check_circle_outline),
-                            title: Text(
-                              name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.w800),
-                            ),
-                            subtitle: Text('Miktar: $qty $unit'),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.edit_outlined),
-                              onPressed: () => _openAddDialog(existing: m),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-
-                    if (_pantry.length > 3)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text('+ ${_pantry.length - 3} ürün daha', style: const TextStyle(color: Colors.black54)),
-                      ),
-
-                    if (_pantry.isNotEmpty)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => PantryListScreen(api: widget.api)),
-                              ).then((_) => _load());
-                            },
-                            icon: const Icon(Icons.list),
-                            label: const Text('Tümünü Gör'),
-                          ),
-                        ],
-                      ),
-
-                    const SizedBox(height: 10),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () => _openAddDialog(),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Stok Ekle'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            if (_alerts.isNotEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.warning_amber_rounded),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '${_alerts.length} ürün kritik/bitti. Listeye eklendi.',
-                          style: const TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () async {
-                          await widget.api.refreshShoppingFromPantry();
-                          if (!mounted) return;
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => ShoppingListScreen(api: widget.api)),
-                          );
-                        },
-                        child: const Text('Göster'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 12),
-
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.shopping_cart_outlined),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Alışveriş Listesi',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () async {
-                            await widget.api.refreshShoppingFromPantry();
-                            if (!mounted) return;
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => ShoppingListScreen(api: widget.api)),
-                            );
-                          },
-                          icon: const Icon(Icons.open_in_new),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    const Text('Azalan ürünler veritabanından otomatik çekilir.', style: TextStyle(color: Colors.black54)),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          await widget.api.refreshShoppingFromPantry();
-                          if (!mounted) return;
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => ShoppingListScreen(api: widget.api)),
-                          );
-                        },
-                        icon: const Icon(Icons.list_alt),
-                        label: const Text('Market Listesini Gör'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.backgroundTop,
+              AppColors.backgroundBottom,
+            ],
+          ),
         ),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        'assets/images/kitchen_hero.png',
+                        height: 140,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const SizedBox(height: 80),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Card(
+                      elevation: 4,
+                      shadowColor: Colors.black.withOpacity(0.08),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.local_fire_department_outlined),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Günlük Kalori',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w900),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                      '${consumed.toInt()} / ${target.toInt()} kcal'),
+                                  const SizedBox(height: 10),
+                                  LinearProgressIndicator(value: progress),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Card(
+                      elevation: 4,
+                      shadowColor: Colors.black.withOpacity(0.08),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.kitchen_outlined),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    'Mutfak Stok Yönetimi',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () => _openAddDialog(),
+                                  icon:
+                                      const Icon(Icons.add_circle_outline),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Hangi besinden ne kadar var kayıt edilir.',
+                              style: TextStyle(color: Colors.black54),
+                            ),
+                            const SizedBox(height: 12),
+                            if (_pantry.isEmpty)
+                              const Padding(
+                                padding:
+                                    EdgeInsets.symmetric(vertical: 18),
+                                child: Center(
+                                  child:
+                                      Text('Henüz stok yok. + ile ekle.'),
+                                ),
+                              )
+                            else
+                              Column(
+                                children: preview.map((e) {
+                                  final m =
+                                      e as Map<String, dynamic>;
+                                  final name = m['ingredient_id']
+                                          ?.toString() ??
+                                      '-';
+                                  final qty =
+                                      _fmtQty(m['quantity']);
+                                  final unit =
+                                      m['unit']?.toString() ?? 'g';
+                                  return ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: const Icon(
+                                        Icons.check_circle_outline),
+                                    title: Text(
+                                      name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontWeight:
+                                              FontWeight.w800),
+                                    ),
+                                    subtitle:
+                                        Text('Miktar: $qty $unit'),
+                                    trailing: IconButton(
+                                      icon: const Icon(
+                                          Icons.edit_outlined),
+                                      onPressed: () => _openAddDialog(
+                                          existing: m),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            if (_pantry.length > 3)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  '+ ${_pantry.length - 3} ürün daha',
+                                  style: const TextStyle(
+                                      color: Colors.black54),
+                                ),
+                              ),
+                            if (_pantry.isNotEmpty)
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.end,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              PantryListScreen(
+                                            api: widget.api,
+                                          ),
+                                        ),
+                                      ).then((_) => _load());
+                                    },
+                                    icon: const Icon(Icons.list),
+                                    label:
+                                        const Text('Tümünü Gör'),
+                                  ),
+                                ],
+                              ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                onPressed: () => _openAddDialog(),
+                                icon: const Icon(Icons.add),
+                                label: const Text('Stok Ekle'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    if (_alerts.isNotEmpty)
+                      Card(
+                        elevation: 4,
+                        shadowColor: Colors.black.withOpacity(0.08),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: [
+                              const Icon(Icons
+                                  .warning_amber_rounded),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  '${_alerts.length} ürün kritik/bitti. Listeye eklendi.',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  await widget.api
+                                      .refreshShoppingFromPantry();
+                                  if (!mounted) return;
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          ShoppingListScreen(
+                                              api: widget.api),
+                                    ),
+                                  );
+                                },
+                                child: const Text('Göster'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                    Card(
+                      elevation: 4,
+                      shadowColor: Colors.black.withOpacity(0.08),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                    Icons.shopping_cart_outlined),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    'Alışveriş Listesi',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () async {
+                                    await widget.api
+                                        .refreshShoppingFromPantry();
+                                    if (!mounted) return;
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            ShoppingListScreen(
+                                                api: widget.api),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(
+                                      Icons.open_in_new),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Azalan ürünler veritabanından otomatik çekilir.',
+                              style: TextStyle(
+                                  color: Colors.black54),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  await widget.api
+                                      .refreshShoppingFromPantry();
+                                  if (!mounted) return;
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          ShoppingListScreen(
+                                              api: widget.api),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.list_alt),
+                                label: const Text(
+                                    'Market Listesini Gör'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
       ),
     );
   }

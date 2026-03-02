@@ -1,5 +1,7 @@
 // lib/features/kitchen/pantry_list_screen.dart
 import 'package:flutter/material.dart';
+
+import '../../core/app_colors.dart';
 import 'kitchen_api.dart';
 
 class PantryListScreen extends StatefulWidget {
@@ -49,15 +51,29 @@ class _PantryListScreenState extends State<PantryListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tüm Stoklar'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
+        elevation: 2,
         actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh))],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.backgroundTop,
+              AppColors.backgroundBottom,
+            ],
+          ),
+        ),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
             TextField(
               controller: _q,
               decoration: const InputDecoration(labelText: 'Ara', prefixIcon: Icon(Icons.search)),
@@ -77,14 +93,17 @@ class _PantryListScreenState extends State<PantryListScreen> {
               final low = m['low_threshold']?.toString() ?? '-';
 
               return Card(
+                color: AppColors.surface,
+                elevation: 2,
                 child: ListTile(
                   title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
                   subtitle: Text('Miktar: $qty $unit  |  Eşik: $low'),
                 ),
               );
             }).toList(),
-          ],
-        ),
+                  ],
+                ),
+              ),
       ),
     );
   }

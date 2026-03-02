@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+
+import '../../core/app_colors.dart';
 import 'auth_api.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -139,105 +141,116 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: const Text('Hesap Oluştur'),
         centerTitle: true,
       ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
-              child: Card(
-                elevation: 0,
-                color: cs.surfaceContainerHighest,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Hadi başlayalım',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Birkaç saniyede hesabını oluştur.',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: cs.onSurfaceVariant),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 18),
-
-                      TextField(
-                        controller: _email,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const [AutofillHints.email],
-                        decoration: const InputDecoration(
-                          labelText: 'E-posta',
-                          prefixIcon: Icon(Icons.alternate_email_rounded),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.backgroundTop,
+              AppColors.backgroundBottom,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 460),
+                child: Card(
+                  elevation: 6,
+                  shadowColor: Colors.black.withOpacity(0.10),
+                  color: cs.surfaceContainerHighest,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Hadi başlayalım',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                          textAlign: TextAlign.center,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      TextField(
-                        controller: _password,
-                        obscureText: _pwHidden,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const [AutofillHints.newPassword],
-                        decoration: InputDecoration(
-                          labelText: 'Şifre',
-                          helperText: 'En az 8 karakter, 1 harf + 1 sayı',
-                          prefixIcon: const Icon(Icons.lock_rounded),
-                          suffixIcon: IconButton(
-                            onPressed: () =>
-                                setState(() => _pwHidden = !_pwHidden),
-                            icon: Icon(
-                                _pwHidden ? Icons.visibility : Icons.visibility_off),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Birkaç saniyede hesabını oluştur.',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 18),
+                        TextField(
+                          controller: _email,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.email],
+                          decoration: const InputDecoration(
+                            labelText: 'E-posta',
+                            prefixIcon: Icon(Icons.alternate_email_rounded),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      TextField(
-                        controller: _password2,
-                        obscureText: _pw2Hidden,
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) => _loading ? null : _register(),
-                        autofillHints: const [AutofillHints.newPassword],
-                        decoration: InputDecoration(
-                          labelText: 'Şifre (Tekrar)',
-                          prefixIcon: const Icon(Icons.lock_outline_rounded),
-                          suffixIcon: IconButton(
-                            onPressed: () =>
-                                setState(() => _pw2Hidden = !_pw2Hidden),
-                            icon: Icon(_pw2Hidden
-                                ? Icons.visibility
-                                : Icons.visibility_off),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _password,
+                          obscureText: _pwHidden,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.newPassword],
+                          decoration: InputDecoration(
+                            labelText: 'Şifre',
+                            helperText: 'En az 8 karakter, 1 harf + 1 sayı',
+                            prefixIcon: const Icon(Icons.lock_rounded),
+                            suffixIcon: IconButton(
+                              onPressed: () =>
+                                  setState(() => _pwHidden = !_pwHidden),
+                              icon: Icon(_pwHidden
+                                  ? Icons.visibility
+                                  : Icons.visibility_off),
+                            ),
                           ),
                         ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      FilledButton(
-                        onPressed: _loading ? null : _register,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _password2,
+                          obscureText: _pw2Hidden,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _loading ? null : _register(),
+                          autofillHints: const [AutofillHints.newPassword],
+                          decoration: InputDecoration(
+                            labelText: 'Şifre (Tekrar)',
+                            prefixIcon:
+                                const Icon(Icons.lock_outline_rounded),
+                            suffixIcon: IconButton(
+                              onPressed: () =>
+                                  setState(() => _pw2Hidden = !_pw2Hidden),
+                              icon: Icon(_pw2Hidden
+                                  ? Icons.visibility
+                                  : Icons.visibility_off),
+                            ),
                           ),
                         ),
-                        child: Text(_loading ? 'Kaydediliyor...' : 'Kayıt Ol'),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed: _loading ? null : _register,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: Text(
+                              _loading ? 'Kaydediliyor...' : 'Kayıt Ol'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

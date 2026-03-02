@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/api_client.dart';
+import 'core/app_colors.dart';
 import 'core/token_store.dart';
 
 import 'features/auth/auth_api.dart';
@@ -26,7 +27,7 @@ class MyApp extends StatelessWidget {
     final client = ApiClient(tokenStore);
     final authApi = AuthApi(client, tokenStore);
 
-    final seed = const Color(0xFF2E7D32); // daha oturaklı yeşil
+    final seed = AppColors.primary;
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -48,7 +49,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: seed),
 
-        scaffoldBackgroundColor: const Color(0xFFF6F7F3),
+        scaffoldBackgroundColor: AppColors.backgroundBottom,
 
         appBarTheme: const AppBarTheme(
           centerTitle: true,

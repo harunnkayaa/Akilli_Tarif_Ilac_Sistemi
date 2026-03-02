@@ -1,0 +1,216 @@
+"Tablo","Kolon","Veri Tipi","Null?","Kısıtlamalar"
+chat_messages,message_id,uuid,NO,PRIMARY KEY
+chat_messages,session_id,uuid,NO,FOREIGN KEY
+chat_messages,role,text,NO,
+chat_messages,content,text,NO,
+chat_messages,created_at,timestamp with time zone,NO,
+chat_sessions,session_id,uuid,NO,PRIMARY KEY
+chat_sessions,user_id,uuid,NO,FOREIGN KEY
+chat_sessions,created_at,timestamp with time zone,NO,
+chat_sessions,title,text,YES,
+daily_nutrient_totals,user_id,uuid,NO,"PRIMARY KEY, FOREIGN KEY"
+daily_nutrient_totals,day,date,NO,PRIMARY KEY
+daily_nutrient_totals,total_energy_kcal,numeric,YES,
+daily_nutrient_totals,total_protein_g,numeric,YES,
+daily_nutrient_totals,total_fat_g,numeric,YES,
+daily_nutrient_totals,total_carbohydrate_g,numeric,YES,
+daily_nutrient_totals,total_sodium_mg,numeric,YES,
+daily_nutrient_totals,updated_at,timestamp with time zone,NO,
+disease_nutrient_limits,id,bigint,NO,PRIMARY KEY
+disease_nutrient_limits,disease_name,text,NO,
+disease_nutrient_limits,nutrient_tag,text,NO,
+disease_nutrient_limits,limit_type,text,NO,
+disease_nutrient_limits,value,double precision,YES,
+disease_nutrient_limits,unit,text,YES,
+disease_nutrient_limits,condition_note,text,YES,
+disease_nutrient_limits,source_primary,text,YES,
+disease_nutrient_limits,source_url,text,YES,
+drug_food_interactions,id,bigint,NO,PRIMARY KEY
+drug_food_interactions,drug_name,text,NO,
+drug_food_interactions,drug_class,text,YES,
+drug_food_interactions,atc_code,text,YES,
+drug_food_interactions,food_name_tr,text,NO,
+drug_food_interactions,nutrient_focus,text,YES,
+drug_food_interactions,interaction_effect,text,YES,
+drug_food_interactions,mechanism,text,YES,
+drug_food_interactions,recommendation_tr,text,YES,
+drug_food_interactions,source_primary,text,YES,
+drug_food_interactions,source_url,text,YES,
+drug_intake_events,intake_event_id,uuid,NO,PRIMARY KEY
+drug_intake_events,user_id,uuid,NO,UNIQUE
+drug_intake_events,user_drug_id,uuid,NO,FOREIGN KEY
+drug_intake_events,client_event_id,text,NO,UNIQUE
+drug_intake_events,action,text,NO,
+drug_intake_events,scheduled_at,timestamp with time zone,NO,
+drug_intake_events,dose,integer,NO,
+drug_intake_events,remind_at,timestamp with time zone,YES,
+drug_intake_events,created_at,timestamp with time zone,NO,
+drug_inventory,user_drug_id,uuid,NO,"PRIMARY KEY, FOREIGN KEY, FOREIGN KEY"
+drug_inventory,quantity,integer,NO,
+drug_inventory,unit,text,YES,
+drug_inventory,low_threshold,integer,NO,
+drug_inventory,last_updated,timestamp with time zone,NO,
+drug_snooze_plans,snooze_plan_id,uuid,NO,PRIMARY KEY
+drug_snooze_plans,intake_event_id,uuid,NO,FOREIGN KEY
+drug_snooze_plans,remind_at,timestamp with time zone,NO,
+drug_snooze_plans,is_active,boolean,NO,
+drug_snooze_plans,created_at,timestamp with time zone,NO,
+ingredients,id,text,NO,PRIMARY KEY
+ingredients,canonical_name_tr,text,NO,
+ingredients,english_name,text,YES,
+ingredients,fdc_id,bigint,YES,
+ingredients,unit_base,text,YES,
+ingredients,energy_kcal,double precision,YES,
+ingredients,protein_g,double precision,YES,
+ingredients,total_fat_g,double precision,YES,
+ingredients,saturated_fat_g,double precision,YES,
+ingredients,monounsaturated_fat_g,double precision,YES,
+ingredients,polyunsaturated_fat_g,double precision,YES,
+ingredients,trans_fat_g,double precision,YES,
+ingredients,carbohydrate_g,double precision,YES,
+ingredients,sugars_g,double precision,YES,
+ingredients,added_sugars_g,double precision,YES,
+ingredients,fiber_g,double precision,YES,
+ingredients,water_g,double precision,YES,
+ingredients,sodium_mg,double precision,YES,
+ingredients,potassium_mg,double precision,YES,
+ingredients,phosphorus_mg,double precision,YES,
+ingredients,calcium_mg,double precision,YES,
+ingredients,magnesium_mg,double precision,YES,
+ingredients,iron_mg,double precision,YES,
+ingredients,zinc_mg,double precision,YES,
+ingredients,selenium_ug,double precision,YES,
+ingredients,iodine_ug,double precision,YES,
+ingredients,copper_mg,double precision,YES,
+ingredients,manganese_mg,double precision,YES,
+ingredients,vitamin_a_ug,double precision,YES,
+ingredients,vitamin_b1_mg,double precision,YES,
+ingredients,vitamin_b2_mg,double precision,YES,
+ingredients,vitamin_b3_mg,double precision,YES,
+ingredients,vitamin_b5_mg,double precision,YES,
+ingredients,vitamin_b6_mg,double precision,YES,
+ingredients,vitamin_b7_ug,double precision,YES,
+ingredients,vitamin_b9_ug,double precision,YES,
+ingredients,vitamin_b12_ug,double precision,YES,
+ingredients,vitamin_c_mg,double precision,YES,
+ingredients,vitamin_d_ug,double precision,YES,
+ingredients,vitamin_e_mg,double precision,YES,
+ingredients,vitamin_k_ug,double precision,YES,
+ingredients,cholesterol_mg,double precision,YES,
+ingredients,caffeine_mg,double precision,YES,
+ingredients,alcohol_g,double precision,YES,
+ingredients,glycemic_index,double precision,YES,
+ingredients,glycemic_load,double precision,YES,
+ingredients,allergen_tags,text,YES,
+ingredients,risk_tags,text,YES,
+ingredients,synonyms_tr,text,YES,
+ingredients,source,text,YES,
+ingredients,last_updated,text,YES,
+meal_log,log_id,uuid,NO,PRIMARY KEY
+meal_log,user_id,uuid,NO,FOREIGN KEY
+meal_log,tarif_id,text,YES,FOREIGN KEY
+meal_log,consumed_at,timestamp with time zone,NO,
+meal_log,servings_consumed,numeric,NO,
+meal_log,notes,text,YES,
+pantry_items,user_id,uuid,NO,"FOREIGN KEY, PRIMARY KEY"
+pantry_items,ingredient_id,text,NO,PRIMARY KEY
+pantry_items,quantity,numeric,NO,
+pantry_items,unit,text,NO,
+pantry_items,expires_at,date,YES,
+pantry_items,low_threshold,numeric,YES,
+pantry_items,updated_at,timestamp with time zone,NO,
+rag_retrieval_log,retrieval_id,uuid,NO,PRIMARY KEY
+rag_retrieval_log,message_id,uuid,NO,FOREIGN KEY
+rag_retrieval_log,query_text,text,NO,
+rag_retrieval_log,retrieved_sources,jsonb,NO,
+rag_retrieval_log,top_k,integer,NO,
+rag_retrieval_log,created_at,timestamp with time zone,NO,
+recipe_feedback,user_id,uuid,NO,"PRIMARY KEY, FOREIGN KEY"
+recipe_feedback,tarif_id,text,NO,"PRIMARY KEY, FOREIGN KEY"
+recipe_feedback,rating,integer,YES,
+recipe_feedback,is_favorite,boolean,NO,
+recipe_feedback,comment,text,YES,
+recipe_feedback,updated_at,timestamp with time zone,NO,
+recipes,tarif_id,text,NO,PRIMARY KEY
+recipes,tarif_adi,text,NO,
+recipes,kategori,text,YES,
+recipes,porsiyon_sayisi,integer,YES,
+recipes,toplam_kalori_kcal,double precision,YES,
+recipes,kullanici_puani,double precision,YES,
+recipes,kaynak_url,text,YES,
+recipes,fotograf_url,text,YES,
+recipes,malzemeler_listesi,text,YES,
+recipes,tarif_adimlari,text,YES,
+recipes,malzemeler_json,jsonb,YES,
+recipes_raw,tarif_id,text,YES,
+recipes_raw,tarif_adi,text,YES,
+recipes_raw,kategori,text,YES,
+recipes_raw,porsiyon_sayisi,text,YES,
+recipes_raw,toplam_kalori_kcal,text,YES,
+recipes_raw,kullanici_puani,text,YES,
+recipes_raw,kaynak_url,text,YES,
+recipes_raw,fotograf_url,text,YES,
+recipes_raw,malzemeler_listesi,text,YES,
+recipes_raw,tarif_adimlari,text,YES,
+recipes_raw,malzemeler_json,text,YES,
+recipes_raw,Malzemeler_Listesi (Kullanıcı İçin),character varying,YES,
+recipes_raw,Tarif_Adimlari (Sadece Adımlar),character varying,YES,
+recipes_raw,Malzemeler_JSON (Stok Takibi İçin),character varying,YES,
+recipes_raw,harun,character varying,YES,
+recipes_raw,enes,character varying,YES,
+recipes_raw,emre,character varying,YES,
+shopping_list_items,item_id,uuid,NO,PRIMARY KEY
+shopping_list_items,user_id,uuid,NO,FOREIGN KEY
+shopping_list_items,ingredient_id,text,YES,
+shopping_list_items,item_text,text,YES,
+shopping_list_items,target_qty,numeric,YES,
+shopping_list_items,unit,text,YES,
+shopping_list_items,is_checked,boolean,NO,
+shopping_list_items,created_at,timestamp with time zone,NO,
+user_allergies,user_id,uuid,NO,FOREIGN KEY
+user_allergies,ingredient_id,text,YES,FOREIGN KEY
+user_allergies,reaction,text,YES,
+user_allergies,notes,text,YES,
+user_allergies,raw_text,text,YES,
+user_allergies,is_custom,boolean,NO,
+user_allergies,note,text,YES,
+user_allergies,id,bigint,NO,PRIMARY KEY
+user_diseases,user_id,uuid,NO,"FOREIGN KEY, PRIMARY KEY"
+user_diseases,disease_name,text,NO,PRIMARY KEY
+user_diseases,diagnosed_at,date,YES,
+user_diseases,notes,text,YES,
+user_disliked_ingredients,user_id,uuid,NO,FOREIGN KEY
+user_disliked_ingredients,ingredient_id,text,YES,FOREIGN KEY
+user_disliked_ingredients,reason,text,YES,
+user_disliked_ingredients,raw_text,text,YES,
+user_disliked_ingredients,is_custom,boolean,NO,
+user_disliked_ingredients,id,bigint,NO,PRIMARY KEY
+user_disliked_ingredients,free_text,text,YES,
+user_drug_schedule,schedule_id,uuid,NO,PRIMARY KEY
+user_drug_schedule,user_drug_id,uuid,NO,"FOREIGN KEY, FOREIGN KEY"
+user_drug_schedule,dose_text,text,YES,
+user_drug_schedule,time_of_day,time without time zone,NO,
+user_drug_schedule,days_mask,integer,NO,
+user_drug_schedule,is_active,boolean,NO,
+user_drugs,user_drug_id,uuid,NO,PRIMARY KEY
+user_drugs,user_id,uuid,NO,FOREIGN KEY
+user_drugs,drug_name,text,NO,
+user_drugs,atc_code,text,YES,
+user_drugs,drug_class,text,YES,
+user_drugs,start_date,date,YES,
+user_drugs,end_date,date,YES,
+user_drugs,notes,text,YES,
+user_profile,user_id,uuid,NO,"FOREIGN KEY, PRIMARY KEY"
+user_profile,full_name,text,YES,
+user_profile,birth_year,integer,YES,
+user_profile,gender,text,YES,
+user_profile,height_cm,integer,YES,
+user_profile,weight_kg,numeric,YES,
+user_profile,created_at,timestamp with time zone,NO,
+user_profile,updated_at,timestamp with time zone,NO,
+users,user_id,uuid,NO,PRIMARY KEY
+users,email,text,NO,UNIQUE
+users,password_hash,text,NO,
+users,is_active,boolean,NO,
+users,created_at,timestamp with time zone,NO,
+users,updated_at,timestamp with time zone,NO,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/api_client.dart';
+import '../../../core/app_colors.dart';
 import '../drugs_api.dart';
 
 class DrugFormScreen extends StatefulWidget {
@@ -151,7 +152,22 @@ class _DrugFormScreenState extends State<DrugFormScreen> {
     return '$hh:$mm:00';
   }
 
+  bool _hasZeroOrNegativeStock() {
+    final qtyText = qtyCtrl.text.trim();
+    final qty = int.tryParse(qtyText);
+    return qty != null && qty <= 0;
+  }
+
   Future<void> _addScheduleWithPicker() async {
+    // Stok 0 ise yeni saat eklenmesine izin verme
+    if (_hasZeroOrNegativeStock()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('İlaç stoğu 0 iken yeni saat ekleyemezsin.')),
+      );
+      return;
+    }
+
     final picked = await _pickTime(const TimeOfDay(hour: 9, minute: 0));
     if (picked == null) return;
 
@@ -161,7 +177,7 @@ class _DrugFormScreenState extends State<DrugFormScreen> {
     if (exists) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bu saat zaten ekli.')),
+        const SnackBar(content: Text('Bu saat zaten ekli. Dozu artırmak için ilgili saati düzenleyin.')),
       );
       return;
     }
@@ -178,6 +194,15 @@ class _DrugFormScreenState extends State<DrugFormScreen> {
   }
 
   Future<void> _editScheduleTime(int idx) async {
+    // Stok 0 ise mevcut saati de düzenlemesin
+    if (_hasZeroOrNegativeStock()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('İlaç stoğu 0 iken saatleri düzenleyemezsin.')),
+      );
+      return;
+    }
+
     final s = schedules[idx];
     final current = (s['time_of_day'] ?? '09:00:00').toString();
     final picked = await _pickTime(_parseTime(current));
@@ -186,11 +211,11 @@ class _DrugFormScreenState extends State<DrugFormScreen> {
     final newTime = _fmtTime(picked);
 
     final exists = schedules.asMap().entries.any((e) =>
-    e.key != idx && (e.value['time_of_day']?.toString() == newTime));
+        e.key != idx && (e.value['time_of_day']?.toString() == newTime));
     if (exists) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bu saat zaten ekli.')),
+        const SnackBar(content: Text('Bu saat zaten ekli. Dozu artırmak için ilgili saatin dozunu düzenleyin.')),
       );
       return;
     }
@@ -227,13 +252,46 @@ class _DrugFormScreenState extends State<DrugFormScreen> {
       }
     }
 
-    // inventory: boş bırakılabilir, ama doldurulmuşsa int olmalı
+    // inventory: ilk kayıtta stok zorunlu ve 0 olamaz; düzenlemede opsiyonel
     Map<String, dynamic>? inventory;
     final qtyText = qtyCtrl.text.trim();
     final thText = thresholdCtrl.text.trim();
     final unitText = unitCtrl.text.trim();
 
-    if (qtyText.isNotEmpty || thText.isNotEmpty || unitText.isNotEmpty) {
+    if (!isEdit) {
+      // İlk kayıtta stok alanı boş veya 0 ise kayıt edilemez
+      if (qtyText.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('İlk kayıtta stok miktarı zorunludur.')),
+        );
+        return;
+      }
+      final qty = int.tryParse(qtyText);
+      if (qty == null || qty <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Stok miktarı 0\'dan büyük olmalıdır.')),
+        );
+        return;
+      }
+      if (unitText.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Birim (örn. tablet) zorunludur.')),
+        );
+        return;
+      }
+      final th = thText.isEmpty ? null : int.tryParse(thText);
+      if (thText.isNotEmpty && th == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Düşük stok eşiği sayı olmalı.')),
+        );
+        return;
+      }
+      inventory = {
+        'quantity': qty,
+        'unit': unitText,
+        'low_threshold': th ?? 0,
+      };
+    } else if (qtyText.isNotEmpty || thText.isNotEmpty || unitText.isNotEmpty) {
       final qty = qtyText.isEmpty ? null : int.tryParse(qtyText);
       final th = thText.isEmpty ? null : int.tryParse(thText);
 
@@ -355,12 +413,25 @@ class _DrugFormScreenState extends State<DrugFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(isEdit ? 'İlaç Düzenle' : 'İlaç Ekle'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
       ),
-      body: Form(
-        key: formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(14),
-          children: [
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.backgroundTop,
+              AppColors.backgroundBottom,
+            ],
+          ),
+        ),
+        child: Form(
+          key: formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(14),
+            children: [
             _drugNameAutocomplete(),
             const SizedBox(height: 12),
             TextFormField(
@@ -406,8 +477,8 @@ class _DrugFormScreenState extends State<DrugFormScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
-                  color: Colors.black.withOpacity(0.03),
-                  border: Border.all(color: Colors.black12),
+                  color: AppColors.surface,
+                  border: Border.all(color: AppColors.primaryLight),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -452,7 +523,17 @@ class _DrugFormScreenState extends State<DrugFormScreen> {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       value: (s['is_active'] ?? true) == true,
-                      onChanged: (v) => setState(() => s['is_active'] = v),
+                      onChanged: (v) {
+                        if (_hasZeroOrNegativeStock()) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('İlaç stoğu 0 iken saatleri aktif/pasif yapamazsın.')),
+                          );
+                          return;
+                        }
+                        setState(() => s['is_active'] = v);
+                      },
                       title: const Text('Aktif'),
                     ),
                   ],
@@ -513,6 +594,7 @@ class _DrugFormScreenState extends State<DrugFormScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

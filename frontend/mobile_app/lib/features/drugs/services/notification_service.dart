@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:developer';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
@@ -30,6 +31,10 @@ class NotificationService {
   static const String _channelId = 'drug_reminders_v3';
   static const String _channelName = 'İlaç Hatırlatıcıları';
   static const String _channelDesc = 'İlaç saatleri için bildirimler';
+
+  // Bildirime tıklama olayını UI tarafına taşımak için
+  static final ValueNotifier<Map<String, String>?> tappedPayload =
+      ValueNotifier<Map<String, String>?>(null);
 
   static void configure(ApiClient client) {
     _client = client;
@@ -179,41 +184,6 @@ class NotificationService {
     return 'evt|$userDrugId|$timeStr|$scheduledAtIso';
   }
 
-  static NotificationDetails _detailsWithActions() {
-    return const NotificationDetails(
-      android: AndroidNotificationDetails(
-        _channelId,
-        _channelName,
-        channelDescription: _channelDesc,
-        importance: Importance.max,
-        priority: Priority.max,
-        playSound: true,
-        enableVibration: true,
-        actions: <AndroidNotificationAction>[
-          AndroidNotificationAction(
-            'TAKEN',
-            'Aldım',
-            showsUserInterface: false,
-            cancelNotification: true,
-          ),
-          AndroidNotificationAction(
-            'SNOOZE',
-            'Ertele',
-            showsUserInterface: false,
-            cancelNotification: true,
-          ),
-          AndroidNotificationAction(
-            'SKIP',
-            'Atla',
-            showsUserInterface: false,
-            cancelNotification: true,
-          ),
-        ],
-      ),
-      iOS: DarwinNotificationDetails(subtitle: null),
-    );
-  }
-
   static NotificationDetails _detailsPlain() {
     return const NotificationDetails(
       android: AndroidNotificationDetails(
@@ -303,21 +273,21 @@ class NotificationService {
         'İlaç zamanı',
         '$name • $timeStr',
         scheduled,
-        _detailsWithActions(),
+        _detailsPlain(),
         payload: payload,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
       );
 
-      // FALLBACK 5dk (action’lı)
+      // FALLBACK 5dk
       final fallbackWhen = scheduled.add(const Duration(minutes: 5));
       await _plugin.zonedSchedule(
         fallbackId,
         'Hatırlatma',
         '$name • $timeStr (5 dk hatırlatma)',
         fallbackWhen,
-        _detailsWithActions(),
+        _detailsPlain(),
         payload: payload,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
@@ -356,6 +326,23 @@ class NotificationService {
       return;
     }
 
+    // Varsayılan tıklama: sadece UI'ya haber ver, intake gönderme
+    // Kullandığımız paket sürümünde defaultActionId sabiti olmadığından
+    // sadece actionId'nin boş olmasını "tap" olarak kabul ediyoruz.
+    final bool isDefaultTap = actionId.isEmpty;
+    if (isDefaultTap) {
+      if (fallbackId != null) {
+        await cancelFallbackByIds(fallbackId: fallbackId);
+      }
+
+      tappedPayload.value = {
+        'user_drug_id': userDrugId,
+        'time_of_day': timeStr,
+        'scheduled_at': scheduledAtIso,
+      };
+      return;
+    }
+
     final baseEventId = baseEventIdFrom(
       userDrugId: userDrugId,
       timeStr: timeStr,
@@ -388,10 +375,10 @@ class NotificationService {
     final normalizedAction = actionId == 'TAKEN'
         ? 'TAKEN'
         : actionId == 'SKIP'
-        ? 'SKIP'
-        : actionId == 'SNOOZE'
-        ? 'SNOOZE'
-        : 'SKIP';
+            ? 'SKIP'
+            : actionId == 'SNOOZE'
+                ? 'SNOOZE'
+                : 'SKIP';
 
     await _sendIntakeOrQueue(
       userDrugId: userDrugId,
@@ -467,7 +454,7 @@ class NotificationService {
         'Hatırlatma',
         'Erteleme • $timeStr (+$minutes dk)',
         when,
-        _detailsWithActions(),
+        _detailsPlain(),
         payload: payload,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
@@ -480,7 +467,7 @@ class NotificationService {
         'Hatırlatma',
         'Erteleme • $timeStr (+$minutes dk)',
         when,
-        _detailsWithActions(),
+        _detailsPlain(),
         payload: payload,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
@@ -593,5 +580,35 @@ class NotificationService {
       log('[NOTIF][intake] send failed: $e');
       return false;
     }
+  }
+
+  // ---------------- DRUG CLEANUP HELPERS ----------------
+
+  /// Bir ilaca ait tüm günlük, fallback ve snooze bildirimlerini iptal eder.
+  /// Böylece silinen ilaç için ertesi gün tekrar bildirim çalmaz.
+  static Future<void> cancelAllForDrug(Map<String, dynamic> drug) async {
+    await ensureInitialized();
+
+    final userDrugId = drug['user_drug_id'].toString();
+    final schedules = (drug['schedules'] ?? []) as List<dynamic>;
+
+    for (final s0 in schedules) {
+      final s = s0 as Map<String, dynamic>;
+      final timeStr = (s['time_of_day'] ?? '09:00:00').toString();
+
+      final stableId = stableIdFrom(userDrugId, timeStr);
+      final fallbackId = fallbackIdFrom(stableId);
+
+      await _plugin.cancel(stableId);
+      await _plugin.cancel(fallbackId);
+
+      await cancelLastSnoozeIfAny(
+        userDrugId: userDrugId,
+        timeStr: timeStr,
+      );
+    }
+
+    await clearPendingSnooze(userDrugId);
+    await _logPending('after_cancel_drug_$userDrugId');
   }
 }

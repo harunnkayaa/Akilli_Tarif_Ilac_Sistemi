@@ -8,8 +8,9 @@ class ApiClient {
       : dio = Dio(
     BaseOptions(
       baseUrl: 'http://10.0.2.2:8000',
-      connectTimeout: const Duration(seconds: 12),
-      receiveTimeout: const Duration(seconds: 12),
+      // Genel API zaman aşımı (chat dışındaki istekler için makul)
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
       headers: {'Content-Type': 'application/json'},
     ),
   ) {
