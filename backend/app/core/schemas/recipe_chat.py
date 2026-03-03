@@ -59,8 +59,39 @@ class RecipeChatSuggestResponse(BaseModel):
     llm_sources: Optional[LLMSourcesOut] = Field(None, description="DEBUG_LLM_SOURCES=1 iken dolu")
 
 
+class CookAddPantryItem(BaseModel):
+    ingredient_id: str
+    quantity: float
+    low_threshold: Optional[float] = Field(default=None, ge=0, description="Eşik (gram); stok bu değerin altına düşünce uyarı")
+
+
+class CookRecipeRequest(BaseModel):
+    """Eksik malzemeleri stoka ekleyip pişirmek için."""
+    add_pantry: Optional[List[CookAddPantryItem]] = Field(default=None, description="Stoka eklenecek malzemeler (gram)")
+
+
 class CookRecipeResponse(BaseModel):
     success: bool
     error: Optional[str] = None
     missing: Optional[List[str]] = None
     daily_nutrient_totals: Optional[dict] = None
+
+
+class RecipeIngredientOut(BaseModel):
+    name: str
+    unit: Optional[str] = Field(default=None, description="Birim (g, ml, adet vb.)")
+    amount: Optional[float] = Field(default=None, description="Standart_Miktar (sayısal)")
+    display_amount: Optional[str] = Field(default=None, description="Tarif_Olcum, kullanıcıya gösterilecek ölçü")
+
+
+class RecipeDetailResponse(BaseModel):
+    recipe_id: str
+    title: str
+    category: Optional[str] = None
+    servings: Optional[int] = None
+    total_calories_kcal: Optional[float] = None
+    calories_per_serving_kcal: Optional[float] = None
+    source_url: Optional[str] = None
+    image_url: Optional[str] = None
+    steps: Optional[str] = Field(default=None, description="tarif_adimlari serbest metin")
+    ingredients: List[RecipeIngredientOut] = Field(default_factory=list)

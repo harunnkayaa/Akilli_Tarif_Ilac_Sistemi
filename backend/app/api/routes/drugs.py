@@ -16,6 +16,12 @@ from app.core.models.user_drug import UserDrug
 
 router = APIRouter(prefix="/drugs", tags=["drugs"])
 
+
+@router.get("/suggest", response_model=List[str])
+def suggest(q: str = Query(..., min_length=1), db: Session = Depends(get_db)):
+    return crud.suggest_drug_names(db, q=q, limit=10)
+
+
 @router.get("/{user_drug_id}", response_model=UserDrugOut)
 def get_drug(
     user_drug_id: UUID,
@@ -40,10 +46,6 @@ def get_drug(
     item.schedule_count_active = active_count
     item.low_stock = low_stock
     return item
-
-@router.get("/suggest", response_model=List[str])
-def suggest(q: str = Query(..., min_length=1), db: Session = Depends(get_db)):
-    return crud.suggest_drug_names(db, q=q, limit=10)
 
 
 @router.get("", response_model=List[UserDrugOut])

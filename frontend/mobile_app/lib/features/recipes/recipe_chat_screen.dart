@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/api_client.dart';
 import '../profile/recipes_api.dart';
+import 'recipe_detail_screen.dart';
 
 class _ChatMessage {
   final bool isUser;
@@ -41,6 +42,19 @@ class _RecipeChatScreenState extends State<RecipeChatScreen> {
     super.initState();
     api = RecipesApi(widget.client);
     _mode = widget.initialMode;
+  }
+
+  void _openRecipeDetail(RecipeChatCard card) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RecipeDetailScreen(
+          api: api,
+          recipeId: card.recipeId,
+          initialTitle: card.title,
+          initialMode: _mode,
+        ),
+      ),
+    );
   }
 
   @override
@@ -139,6 +153,7 @@ class _RecipeChatScreenState extends State<RecipeChatScreen> {
                     isUser: m.isUser,
                     text: m.text,
                     cards: m.cards,
+                    onCardTap: _openRecipeDetail,
                   );
                 },
               ),
@@ -197,11 +212,13 @@ class _MessageBubble extends StatelessWidget {
   final bool isUser;
   final String text;
   final List<RecipeChatCard>? cards;
+  final void Function(RecipeChatCard) onCardTap;
 
   const _MessageBubble({
     required this.isUser,
     required this.text,
     this.cards,
+    required this.onCardTap,
   });
 
   @override
@@ -233,7 +250,10 @@ class _MessageBubble extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (context, i) {
                   final c = cards![i];
-                  return _RecipeCardTile(card: c);
+                  return _RecipeCardTile(
+                    card: c,
+                    onTap: () => onCardTap(c),
+                  );
                 },
               ),
             ),
@@ -246,68 +266,75 @@ class _MessageBubble extends StatelessWidget {
 
 class _RecipeCardTile extends StatelessWidget {
   final RecipeChatCard card;
+  final VoidCallback onTap;
 
-  const _RecipeCardTile({required this.card});
+  const _RecipeCardTile({
+    required this.card,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        width: 160,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (card.imageUrl != null && card.imageUrl!.isNotEmpty)
-              Image.network(
-                card.imageUrl!,
-                height: 100,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+    return InkWell(
+      onTap: onTap,
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: SizedBox(
+          width: 160,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (card.imageUrl != null && card.imageUrl!.isNotEmpty)
+                Image.network(
+                  card.imageUrl!,
+                  height: 100,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 100,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    child: const Icon(Icons.restaurant, size: 40),
+                  ),
+                )
+              else
+                Container(
                   height: 100,
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: const Icon(Icons.restaurant, size: 40),
                 ),
-              )
-            else
-              Container(
-                height: 100,
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: const Icon(Icons.restaurant, size: 40),
-              ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      card.title,
-                      style: Theme.of(context).textTheme.titleSmall,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (card.availableIngredients.isNotEmpty)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        'Stokta: ${card.availableIngredients.take(2).join(", ")}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                        maxLines: 1,
+                        card.title,
+                        style: Theme.of(context).textTheme.titleSmall,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    if (card.missingIngredients.isNotEmpty)
-                      Text(
-                        'Eksik: ${card.missingIngredients.take(2).join(", ")}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.error,
+                      if (card.availableIngredients.isNotEmpty)
+                        Text(
+                          'Stokta: ${card.availableIngredients.take(2).join(", ")}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
+                      if (card.missingIngredients.isNotEmpty)
+                        Text(
+                          'Eksik: ${card.missingIngredients.take(2).join(", ")}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

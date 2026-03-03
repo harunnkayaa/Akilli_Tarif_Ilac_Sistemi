@@ -36,15 +36,15 @@ class KitchenApi {
     });
   }
 
+  /// Malzeme önerisi: sadece recipes.malzemeler_json içindeki Malzeme_Adi (tariflerdeki malzemeler).
   Future<List<String>> searchRecipeIngredients(String query) async {
     final q = query.trim();
     if (q.length < 2) return [];
 
     final r = await _dio.get(
       '/recipes/ingredients',
-      queryParameters: {'query': q},
+      queryParameters: {'query': q, 'limit': 30},
     );
-
     final data = r.data;
     if (data is List) return data.map((e) => e.toString()).toList();
     return [];

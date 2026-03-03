@@ -10,7 +10,7 @@ class MealLog(Base):
 
     log_id = Column(UUID(as_uuid=True), primary_key=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
-    tarif_id = Column(Text, ForeignKey("recipes.tarif_id", ondelete="SET NULL"), nullable=True, index=True)
+    tarif_id = Column(Text, nullable=True, index=True)  # recipes.tarif_id ile ilişkili; recipes ORM'de map edilmediği için FK burada tanımlanmıyor
     consumed_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     servings_consumed = Column(Numeric(10, 2), nullable=False)
     notes = Column(Text, nullable=True)

@@ -35,21 +35,41 @@ def _ingredient_tokens_match(tokens_a: set[str], tokens_b: set[str]) -> bool:
 
 def _pantry_name_matches_recipe_ingredient(pantry_name: str, recipe_ingredient_name: str) -> bool:
     """
-    Stokta olan besin, tarif içinde kelime olarak geçiyorsa stokta vardır sayılır.
-    - Stoktaki malzeme adı (normalize) tarif malzemesi metninde geçiyorsa eşleşir (Tavuk <-> Tavuk (Bütün)).
-    - Token kesişimi veya stoktaki herhangi bir kelime (>=2 karakter) tarif metninde geçiyorsa da eşleşir.
+    Stokta olan besin, tarif içindeki malzeme adıyla makul şekilde eşleşiyorsa True.
+
+    Kurallar:
+    - Tam ifade eşleşmesi: normalize(pantry_name) tarif malzemesi içinde alt string olarak geçerse eşleşir
+      (\"tavuk\" <-> \"tavuk (bütün)\", \"dana eti\" <-> \"dana eti kuşbaşı\" gibi).
+    - Stoktaki isim birden fazla kelimeyse (\"dana eti\", \"süzme yoğurt\" vb.):
+      TÜM kelimeler tarif malzemesinin token seti içinde bulunmadıkça eşleşmiş sayılmaz.
+      Örn: pantry=\"dana eti\"; tarif=\"dana kıyma\" -> EŞLEŞMEZ (sadece \"dana\" ortak).
+    - Tek kelimelik stok isimleri için (\"süt\", \"yumurta\" vb.) önce token kesişimi, sonra hafif substring kontrolü yapılır.
     """
     if not pantry_name or not recipe_ingredient_name:
         return False
     recipe_norm = normalize(recipe_ingredient_name)
     pantry_norm = normalize(pantry_name)
-    # Stok adı tarif malzemesinde kelime/alt metin olarak geçiyorsa eşleş (Tavuk <-> Tavuk (Bütün))
-    if pantry_norm and len(pantry_norm) >= 2 and pantry_norm in recipe_norm:
+    if not recipe_norm or not pantry_norm:
+        return False
+
+    # 1) Tam ifade: normalize(pantry) tarif malzemesinde alt string olarak geçiyorsa
+    if len(pantry_norm) >= 2 and pantry_norm in recipe_norm:
         return True
-    if recipe_norm and len(recipe_norm) >= 2 and recipe_norm in pantry_norm:
+    # veya tarif malzemesi adı stok isminden daha kısa, ama tamamen onun içinde yer alıyorsa
+    if len(recipe_norm) >= 2 and recipe_norm in pantry_norm:
         return True
+
     pantry_tokens = tokenize(pantry_name)
     recipe_tokens = tokenize(recipe_ingredient_name)
+
+    # 2) Çok kelimeli stok isimleri: tüm kelimeler tarif malzemesinin token setinde olmalı
+    if len(pantry_tokens) >= 2:
+        if pantry_tokens.issubset(recipe_tokens):
+            return True
+        # Çok kelimeli isimler için sadece tek kelime ortaksa (\"dana\" vs \"dana kıyma\") eşleşme sayma
+        return False
+
+    # 3) Tek kelimelik stok isimleri: önce token kesişimi, sonra hafif substring
     if _ingredient_tokens_match(pantry_tokens, recipe_tokens):
         return True
     for p_token in pantry_tokens:
@@ -303,14 +323,20 @@ def disease_limit_warnings(
     return warnings
 
 
-# ---------- Staple malzemeler: stok zorunluluğu yok, sıralamada ayrı ----------
+# ---------- Staple malzemeler: sadece tuz, karabiber, pul biber vb. temel baharatlar ----------
+# Soğan, sarımsak, domates, salça, limon, sirke, tarhun, zencefil vb. burada yok; stokta yoksa eksik sayılır.
 STAPLE_NAME_TOKENS = frozenset({
     "su", "water", "tuz", "salt", "yağ", "yag", "oil", "zeytinyağ", "ayçiçek",
-    "baharat", "spice", "spices", "karabiber", "pepper", "pulbiber", "kırmızı",
-    "şeker", "seker", "sugar", "toz", "vanilya", "vanilla", "tarçın", "tarcin",
-    "kimyon", "kekik", "nane", "fesleğen", "biberiye", "karbonat", "kabartma",
-    "sirke", "vinegar", "limon", "lemon", "sarımsak", "sarimsak", "soğan", "sogan",
-    "salça", "salca", "domates", "biber", "çeşni", "cesni", "aromatik",
+    "karabiber", "pepper", "pulbiber", "kırmızı", "şeker", "seker", "sugar",
+    "toz", "vanilya", "vanilla", "tarçın", "tarcin", "karbonat", "kabartma",
+    "baharat", "spice", "spices",
+})
+# Bu malzemeler asla staple sayılmaz; tarifte varsa stokta da olmalı
+NEVER_STAPLE_TOKENS = frozenset({
+    "tarhun", "taragon", "zencefil", "ginger", "soğan", "sogan", "sarımsak", "sarimsak",
+    "domates", "salça", "salca", "limon", "lemon", "sirke", "vinegar",
+    "kimyon", "kekik", "nane", "fesleğen", "feslegen", "biberiye", "çeşni", "cesni", "aromatik",
+    "biber",  # taze biber / kapya; karabiber/pulbiber staple'da kalır
 })
 STAPLE_THRESHOLD_G = 10.0
 STAPLE_THRESHOLD_ML = 15.0
@@ -320,11 +346,14 @@ def _is_staple(elem: Dict[str, Any]) -> bool:
     """
     Staple sayılır: (a) adında staples listesinden bir token var
     veya (b) Standart_Miktar eşik altı: g<10 veya ml<15.
+    NEVER_STAPLE_TOKENS içindekiler (tarhun vb.) her zaman zorunlu sayılır.
     """
     if not isinstance(elem, dict):
         return True
     name = elem.get("Malzeme_Adi") or elem.get("malzeme_adi")
     tokens = tokenize(str(name or ""))
+    if tokens & NEVER_STAPLE_TOKENS:
+        return False
     if tokens & STAPLE_NAME_TOKENS:
         return True
     try:
@@ -344,11 +373,13 @@ def check_recipe_stock(
     db: Session,
     user_id: Any,
     malzemeler_json: Any,
+    return_partial_deductions: bool = False,
 ) -> Dict[str, Any]:
     """
     Pantry–tarif eşleşmesi: token kesişimi.
     pantry_name = pantry_items.ingredient_id (string); ingredients tablosu kullanılmaz.
     match <=> tokens(pantry_name) ∩ tokens(recipe Malzeme_Adi) != ∅.
+    return_partial_deductions=True ise: stokta ne varsa o kadar düşülecek (min(qty, need)).
     """
     empty_result = {
         "ok": True,
@@ -400,11 +431,14 @@ def check_recipe_stock(
         recipe_tokens = tokenize(name_str)
         matched_ing_id = None
         matched_qty = None
+        # Aynı tarif malzemesine birden fazla stok eşleşebilir (örn. "Tavuk" ve "Tavuk But (Kemiksiz)").
+        # En yüksek miktara sahip eşleşmeyi seç ki kullanıcının dolu stoku kullanılsın.
         for pantry_item, ing_name in pantry_list:
             if _pantry_name_matches_recipe_ingredient(ing_name, name_str):
-                matched_ing_id = pantry_item.ingredient_id
-                matched_qty = float(pantry_item.quantity or 0)
-                break
+                qty = float(pantry_item.quantity or 0)
+                if matched_qty is None or qty > matched_qty:
+                    matched_ing_id = pantry_item.ingredient_id
+                    matched_qty = qty
         recipe_items.append((name_str, need_val, staple, recipe_tokens, matched_ing_id, matched_qty))
 
     # Aynı pantry’ye bağlanan tarif kalemlerini topla (örn. Brokoli + Haşlanmış Brokoli -> aynı ingredient_id)
@@ -431,8 +465,10 @@ def check_recipe_stock(
             continue
         qty = float(pantry_item.quantity or 0)
         non_staple_need = non_staple_need_per_ingredient.get(ing_id, 0)
+        deduct_qty = min(qty, total_need) if return_partial_deductions else (total_need if qty >= total_need else 0)
+        if deduct_qty > 0:
+            deductions.append({"ingredient_id": ing_id, "quantity": deduct_qty})
         if qty >= total_need:
-            deductions.append({"ingredient_id": ing_id, "quantity": total_need})
             non_staple_available += non_staple_need
             for name_str, _nv, staple in names_per_ingredient.get(ing_id, []):
                 if not staple:

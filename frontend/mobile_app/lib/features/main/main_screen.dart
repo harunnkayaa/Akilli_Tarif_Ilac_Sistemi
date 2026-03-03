@@ -7,9 +7,11 @@ import '../drugs/drugs_api.dart';
 import '../drugs/screens/drug_detail_screen.dart';
 import '../drugs/screens/drugs_screen.dart';
 import '../drugs/services/notification_service.dart';
+import '../home/home_screen.dart';
 import '../kitchen/kitchen_api.dart';
 import '../kitchen/kitchen_home_screen.dart';
 import '../profile/profile_screen.dart';
+import '../profile/recipes_api.dart';
 import '../recipes/recipe_mode_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -30,15 +32,18 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _index = 0;
+  int _homeRefreshKey = 0;
 
   late final KitchenApi kitchenApi;
   late final DrugsApi drugsApi;
+  late final RecipesApi recipesApi;
 
   @override
   void initState() {
     super.initState();
     kitchenApi = KitchenApi(widget.client.dio);
     drugsApi = DrugsApi(widget.client);
+    recipesApi = RecipesApi(widget.client);
 
     NotificationService.tappedPayload.addListener(_handleNotificationTap);
     // Uygulama zaten açıkken tıklanmış bir payload varsa hemen işle
@@ -83,7 +88,12 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      const _Placeholder(title: 'Home'),
+      HomeScreen(
+        key: ValueKey(_homeRefreshKey),
+        kitchenApi: kitchenApi,
+        drugsApi: drugsApi,
+        recipesApi: recipesApi,
+      ),
       DrugsScreen(client: widget.client),
       KitchenHomeScreen(api: kitchenApi),
       RecipeModeScreen(client: widget.client),
@@ -97,7 +107,12 @@ class _MainScreenState extends State<MainScreen> {
       body: SafeArea(child: screens[_index]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: (i) {
+          setState(() {
+            _index = i;
+            if (i == 0) _homeRefreshKey++;
+          });
+        },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.vaccines_rounded), label: 'İlaç'),
@@ -106,18 +121,6 @@ class _MainScreenState extends State<MainScreen> {
           NavigationDestination(icon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
-    );
-  }
-}
-
-class _Placeholder extends StatelessWidget {
-  final String title;
-  const _Placeholder({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(title, style: Theme.of(context).textTheme.headlineSmall),
     );
   }
 }

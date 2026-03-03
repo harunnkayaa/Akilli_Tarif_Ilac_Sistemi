@@ -333,10 +333,6 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final consumed = 260.0;
-    final target = 2300.0;
-    final progress = (target <= 0) ? 0.0 : (consumed / target).clamp(0.0, 1.0);
-
     final preview = _pantry.take(3).toList();
 
     return Scaffold(
@@ -376,37 +372,6 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Card(
-                      elevation: 4,
-                      shadowColor: Colors.black.withOpacity(0.08),
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.local_fire_department_outlined),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Günlük Kalori',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w900),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                      '${consumed.toInt()} / ${target.toInt()} kcal'),
-                                  const SizedBox(height: 10),
-                                  LinearProgressIndicator(value: progress),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     Card(
                       elevation: 4,
                       shadowColor: Colors.black.withOpacity(0.08),
