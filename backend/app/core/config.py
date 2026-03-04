@@ -7,7 +7,8 @@ _backend_root = Path(__file__).resolve().parent.parent.parent
 _env_path = _backend_root / ".env"
 if _env_path.exists():
     from dotenv import load_dotenv
-    load_dotenv(_env_path)
+    # .env değerleri mevcut ortam değişkenlerini override etsin (özellikle BASE_URL vb.)
+    load_dotenv(_env_path, override=True)
 
 DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
 DB_PORT = int(os.getenv("DB_PORT", "5432"))
@@ -31,6 +32,8 @@ CHAT_HISTORY_N = int(os.getenv("CHAT_HISTORY_N", "8"))      # chat hafıza mesaj
 # OpenAI: query embedding (must match rag_documents embedding setup)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+# Eski isimle import eden kodlar için geriye dönük alias
+OPENAI_EMBED_MODEL = OPENAI_EMBEDDING_MODEL
 EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "768"))
 
 # Geçici debug: /recipes/chat/suggest kartlarına skor alanları ekler
@@ -42,3 +45,6 @@ DEBUG_LLM_SOURCES = os.getenv("DEBUG_LLM_SOURCES", "").strip() == "1"
 USE_RECIPE_LLM = os.getenv("USE_RECIPE_LLM", "").strip() == "1"
 # GPT modeli (LangChain ile kullanılır). .env: OPENAI_CHAT_MODEL=gpt-4o-mini
 OPENAI_CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "").strip() or "gpt-4o-mini"
+
+# API temel adresi (örn. http://localhost:8000). Sonunda / olmamalı.
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")

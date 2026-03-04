@@ -37,6 +37,7 @@ from app.core.config import (
     RAG_CANDIDATE_K,
     LLM_RERANK_K,
     CHAT_HISTORY_N,
+    BASE_URL,
 )
 from app.core.services.intent_service import extract_intent, IntentResult
 from app.core.services.llm_service import generate_assistant_response, generate_general_chat_response
@@ -501,10 +502,12 @@ def suggest_recipes(
         rec = recipe_map.get(item["tarif_id"])
         if not rec:
             continue
+        fotograf_url = rec.get("fotograf_url")
+        image_url = f"{BASE_URL}{fotograf_url}" if fotograf_url else None
         card = {
             "recipe_id": rec["tarif_id"],
             "title": rec.get("tarif_adi") or "",
-            "image_url": rec.get("fotograf_url"),
+            "image_url": image_url,
             "reason": "—",  # polisher dolduracak
             "warnings": item["warnings"],
             "badges": [b for b in [rec.get("kategori")] if b],

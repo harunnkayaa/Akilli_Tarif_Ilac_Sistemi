@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.core.models.user import User
 from app.core.models.daily_nutrient_total import DailyNutrientTotal
+from app.core.config import BASE_URL
 from app.core.schemas.recipe_chat import (
     RecipeChatSuggestRequest,
     RecipeChatSuggestResponse,
@@ -256,6 +257,12 @@ def get_recipe_detail(
     except Exception:
         calories_per_serving = None
 
+    fotograf_url = row[6]
+    image_url = None
+    if fotograf_url:
+        # DB yalnızca relatif yolu tutar (örn. /static/recipes/TR0001.jpg)
+        image_url = f"{BASE_URL}{fotograf_url}"
+
     return RecipeDetailResponse(
         recipe_id=str(row[0]),
         title=row[1] or "",
@@ -264,7 +271,7 @@ def get_recipe_detail(
         total_calories_kcal=float(total) if total is not None else None,
         calories_per_serving_kcal=calories_per_serving,
         source_url=row[5],
-        image_url=row[6],
+        image_url=image_url,
         steps=row[8],
         ingredients=ingredients,
     )
