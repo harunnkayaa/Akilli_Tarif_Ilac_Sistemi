@@ -16,14 +16,14 @@ Uygulama beş ana sekmeden oluşur: **Ana Sayfa**,**Profil**, **İlaç**, **Mutf
 
 Tek ekranda: günlük tüketilen kalori (hedefe göre ilerleme çubuğu), mutfak stok ve ilaç sayıları, mutfak/ilaç stok uyarıları (azalan veya biten ürünler) ve son yapılan tarifler listesi. 
 
-![Ana sayfa özet](../../screenshot/home.png)
+![Ana sayfa özet](screenshot/home.png)
 
 ### Giriş ve kayıt
 
 E-posta ve şifre ile giriş/kayıt. İlk girişte **“Önemli Bilgilendirme”** dialog’u gösterilir: uygulama teşhis veya tedavi amacı taşımaz; sağlık kararları için uzmana danışılması hatırlatılır. JWT token `flutter_secure_storage` ile güvenli saklanır; isteklerde Bearer token gönderilir.
 
-![Giriş](../../screenshot/login.png)
-![Kayıt](../../screenshot/register.png)
+![Giriş](screenshot/login.png)
+![Kayıt](screenshot/register.png)
 
 ### İlaç yönetimi
 
@@ -132,5 +132,6 @@ Ekran görüntüleri proje kökünde `screenshot/` klasöründedir. README’dek
 
 
 ## Lisans
+
 
 
