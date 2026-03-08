@@ -2,13 +2,13 @@
 
 **Tarif önerisi, mutfak stoku, ilaç takibi ve kişisel sağlık bilgilerini tek uygulamada toplayan** Flutter mobil uygulaması. Günlük beslenme ve ilaç kullanımını takip eder; alerji, hastalık ve sevilmeyen besinlere göre kişiselleştirilmiş tarif önerileri sunar. Backend ile REST API üzerinden haberleşir; tarif önerileri RAG (Retrieval-Augmented Generation) ve LLM ile üretilir.
 
----
+
 
 ## Uygulama Hakkında
 
 Uygulama beş ana sekmeden oluşur: **Ana Sayfa**,**Profil**, **İlaç**, **Mutfak** ve **Tarif**. Giriş sonrası ana sayfada günlük kalori özeti, mutfak ve ilaç stok sayıları, uyarılar ve son yapılan tarifler tek bakışta görülür. İlaç sekmesinde ilaç ekleyebilir, stok ve hatırlatma saatlerini yönetebilir, ilaç–gıda etkileşimlerini inceleyebilirsiniz. Mutfak sekmesinde kiler stoku (malzeme, miktar, birim, uyarı eşiği) ve alışveriş listesi yönetilir. Tarif sekmesinde önce **“Stok olmadan”** veya **“Stoka göre”** modu seçilir; sohbet arayüzünde yazdığınız isteğe göre backend tarif kartları döner; kartlara tıklayınca tarif detayı ve **“Bu tarifi yap”** ile pişirme (stok düşümü, günlük kalori ve son yemek kaydı) yapılır. Profil ekranında alerjiler, hastalıklar ve sevilmeyen besinler tanımlanır; tarif önerileri bu bilgilere göre filtrelenir.
 
----
+
 
 ## Özellikler (Ekran Görüntüleriyle)
 
@@ -32,16 +32,16 @@ E-posta ve şifre ile giriş/kayıt. İlk girişte **“Önemli Bilgilendirme”
 - **Detay:** İlaç–gıda etkileşimleri (`GET /drugs/{user_drug_id}/interactions`), **“İlacı aldım”** ile intake kaydı (`POST /intake`), hatırlatma bildirimleri ve erteleyip sonra tekrar bildirim alma (snooze) akışı.
 - Bildirimler `flutter_local_notifications` ve `timezone` ile yerel olarak zamanlanır; bildirime tıklanınca uygulama İlaç sekmesine geçip ilgili ilaç detay sayfasını açar.
 
-![İlaç listesi](../../screenshot/ilaç.png)
-![İlaç ekle / düzenle](../../screenshot/ilaç_ekle:düzenle_ekranı.png)
+![İlaç listesi](screenshot/ilaç.png)
+![İlaç ekle / düzenle](screenshot/ilaç_ekle:düzenle_ekranı.png)
 
 ### Mutfak stoku ve alışveriş listesi
 
 - **Kiler:** Malzeme adı tarif veri setinden gelen önerilerle girilir; miktar, birim (g/ml/adet) ve uyarı eşiği tanımlanır. Stok uyarıları ayrı endpoint ile alınır.
 - **Alışveriş listesi:** Liste görüntülenir; manuel ekleme, tamamlandı işaretleme ve silme yapılır. Backend’te stoka göre listeyi yenileme (`/shopping-list/refresh`) desteklenir.
 
-![Mutfak stok](../../screenshot/stok.png)
-![Alışveriş listesi](../../screenshot/alışveriş_listesi.png)
+![Mutfak stok](screenshot/stok.png)
+![Alışveriş listesi](screenshot/alışveriş_listesi.png)
 
 ### Tarif önerisi
 
@@ -49,17 +49,17 @@ E-posta ve şifre ile giriş/kayıt. İlk girişte **“Önemli Bilgilendirme”
 - **Sohbet:** Kullanıcı mesajı `POST /recipes/chat/suggest` ile gönderilir; backend intent, RAG, stok/alerji kuralları ve LLM ile yanıt ve tarif kartları üretir. Kartlarda tarif adı, görsel, stokta olan / eksik malzemeler ve uyarılar yer alır.
 - **Tarif detayı:** Tarif seçilince detay sayfası açılır. **“Bu tarifi yap”** ile `POST /recipes/{id}/cook` çağrılır; stok düşümü, günlük besin toplamları ve meal_log güncellenir. Stoka göre modda eksik malzemeler varsa önce kilere ekleme (miktar/eşik) dialog’u sunulur.
 
-![Tarif önerisi giriş](../../screenshot/tarif_önerisi_anagiriş.png)
-![Tarif sohbet](../../screenshot/tarif_önerisi_chat_ekranı.png)
-![Tarif detay](../../screenshot/tarif_detayları.png)
+![Tarif önerisi giriş](screenshot/tarif_önerisi_anagiriş.png)
+![Tarif sohbet](screenshot/tarif_önerisi_chat_ekranı.png)
+![Tarif detay](screenshot/tarif_detayları.png)
 
 ### Profil ve sağlık bilgileri
 
 Alerjiler, hastalıklar ve sevilmeyen besinler ayrı listeler halinde yönetilir (`/profile/allergies`, `/profile/diseases`, `/profile/disliked-ingredients`). Tarif önerilerinde bu bilgiler backend tarafında kullanılarak uygun tarifler öne çıkarılır, uygun olmayanlar filtrelenir veya uyarı verilir.
 
-![Profil / alerji, hastalık, sevilmeyen besin](../../screenshot/alerji:hastalık:sevilmeyen_besin:profil_bilgisi.png)
+![Profil / alerji, hastalık, sevilmeyen besin](screenshot/alerji:hastalık:sevilmeyen_besin:profil_bilgisi.png)
 
----
+
 
 ## Teknik yapı
 
@@ -101,7 +101,7 @@ Renk paleti `lib/core/app_colors.dart` içinde merkezi tanımlıdır (arka plan 
 
 Tarif görselleri backend’te `app/static/recipes/{tarif_id}.jpg` olarak tutulur; API yanıtlarında `image_url` tam URL ile döner.
 
----
+
 
 ## Kurulum ve çalıştırma
 
@@ -129,7 +129,8 @@ Tarif görselleri backend’te `app/static/recipes/{tarif_id}.jpg` olarak tutulu
 
 Ekran görüntüleri proje kökünde `screenshot/` klasöründedir. README’deki görseller bu klasöre göre göreli yollarla referans verilir.
 
----
+
 
 ## Lisans
+
 
