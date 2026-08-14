@@ -42,7 +42,7 @@ class AuthApi {
   Future<void> logout() async {
     await _tokenStore.deleteToken();
   }
-
+  /*
   Future<bool> hasValidSession() async {
     final token = await _tokenStore.readToken();
     if (token == null || token.isEmpty) return false;
@@ -59,5 +59,32 @@ class AuthApi {
     } catch (_) {
       return false;
     }
+  }*/
+  Future<bool> hasValidSession() async {
+  String? token;
+
+  try {
+    token = await _tokenStore
+        .readToken()
+        .timeout(const Duration(seconds: 3), onTimeout: () => null);
+  } catch (_) {
+    return false;
   }
+
+  if (token == null || token.isEmpty) return false;
+
+  try {
+    await _dio.get('/users/me').timeout(const Duration(seconds: 5));
+    return true;
+  } on DioException catch (e) {
+    if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+      await _tokenStore.deleteToken();
+      return false;
+    }
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
 }

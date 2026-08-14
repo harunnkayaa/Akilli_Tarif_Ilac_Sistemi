@@ -25,7 +25,7 @@ RAG_SCHEMA = os.getenv("RAG_SCHEMA", "").strip() or "rag"
 RAG_TABLE = "rag_documents"
 RAG_TOP_K = int(os.getenv("RAG_TOP_K", "300"))
 # Tarif öneri pipeline (talimat)
-RAG_CANDIDATE_K = int(os.getenv("RAG_CANDIDATE_K", "90"))  # retrieval aday sayısı
+RAG_CANDIDATE_K = int(os.getenv("RAG_CANDIDATE_K", "150"))  # retrieval aday sayısı
 LLM_RERANK_K = int(os.getenv("LLM_RERANK_K", "40"))         # LLM rerank sonrası seçilecek sayı
 CHAT_HISTORY_N = int(os.getenv("CHAT_HISTORY_N", "8"))      # chat hafıza mesaj sayısı
 

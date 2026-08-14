@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../../core/api_client.dart';
 import '../../../core/app_colors.dart';
 import '../drugs_api.dart';
+import '../services/notification_service.dart';
 
 class DrugFormScreen extends StatefulWidget {
   final ApiClient client;
@@ -323,13 +324,26 @@ class _DrugFormScreenState extends State<DrugFormScreen> {
       'inventory': inventory,
     };
 
+    final previousTimes = isEdit
+        ? NotificationService.scheduleTimesFromDrug(widget.existingDrug!)
+        : <String>[];
+
     try {
+      final Map<String, dynamic> saved;
       if (isEdit) {
         final id = widget.existingDrug!['user_drug_id'].toString();
-        await api.updateDrug(id, payload);
+        final res = await api.updateDrug(id, payload);
+        saved = Map<String, dynamic>.from(res as Map);
       } else {
-        await api.createDrug(payload);
+        final res = await api.createDrug(payload);
+        saved = Map<String, dynamic>.from(res as Map);
       }
+
+      // Kayıt olur olmaz bildirimleri planla (liste refresh beklemez)
+      await NotificationService.rescheduleSingleDrug(
+        saved,
+        previousTimeStrs: previousTimes,
+      );
 
       if (!mounted) return;
       Navigator.pop(context, true);

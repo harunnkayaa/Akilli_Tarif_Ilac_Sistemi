@@ -58,6 +58,7 @@ class ShoppingItemOut(BaseModel):
     user_id: UUID
     ingredient_id: Optional[str]
     item_text: Optional[str]
+    current_qty: Optional[float] = None  # mutfak stokundaki kalan miktar
     target_qty: Optional[float]
     unit: Optional[str]
     is_checked: bool

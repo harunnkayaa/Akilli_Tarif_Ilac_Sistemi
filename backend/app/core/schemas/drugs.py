@@ -70,6 +70,7 @@ class UserDrugOut(BaseModel):
 
     schedule_count_active: int = 0
     low_stock: bool = False
+    stock_depleted: bool = False
 
     class Config:
         from_attributes = True

@@ -30,30 +30,52 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _index = 0;
   int _homeRefreshKey = 0;
 
   late final KitchenApi kitchenApi;
   late final DrugsApi drugsApi;
   late final RecipesApi recipesApi;
+  late final Widget _drugsScreen;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    NotificationService.configure(widget.client);
     kitchenApi = KitchenApi(widget.client.dio);
     drugsApi = DrugsApi(widget.client);
     recipesApi = RecipesApi(widget.client);
+    // Sekme her değişiminde yeniden oluşturulmasın → tekrar tekrar reschedule olmasın
+    _drugsScreen = DrugsScreen(client: widget.client);
 
     NotificationService.tappedPayload.addListener(_handleNotificationTap);
     // Uygulama zaten açıkken tıklanmış bir payload varsa hemen işle
     _handleNotificationTap();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reconcileMissedDoses());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     NotificationService.tappedPayload.removeListener(_handleNotificationTap);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _reconcileMissedDoses();
+    }
+  }
+
+  Future<void> _reconcileMissedDoses() async {
+    try {
+      final items = await drugsApi.listMyDrugs();
+      await NotificationService.pruneOrphanedForDrugList(items);
+      await NotificationService.reconcileMissedDoses(items);
+    } catch (_) {}
   }
 
   Future<void> _handleNotificationTap() async {
@@ -93,8 +115,9 @@ class _MainScreenState extends State<MainScreen> {
         kitchenApi: kitchenApi,
         drugsApi: drugsApi,
         recipesApi: recipesApi,
+        onNavigateToTab: (i) => setState(() => _index = i),
       ),
-      DrugsScreen(client: widget.client),
+      _drugsScreen,
       KitchenHomeScreen(api: kitchenApi),
       RecipeModeScreen(client: widget.client),
       ProfileScreen(
@@ -114,7 +137,7 @@ class _MainScreenState extends State<MainScreen> {
           });
         },
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.home), label: 'Ana Sayfa'),
           NavigationDestination(icon: Icon(Icons.vaccines_rounded), label: 'İlaç'),
           NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Market'),
           NavigationDestination(icon: Icon(Icons.restaurant), label: 'Tarif'),

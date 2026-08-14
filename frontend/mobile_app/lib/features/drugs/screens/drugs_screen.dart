@@ -25,7 +25,39 @@ class _DrugsScreenState extends State<DrugsScreen> {
   void initState() {
     super.initState();
     api = DrugsApi(widget.client);
+    NotificationService.drugStockUpdate.addListener(_onStockUpdate);
     _load();
+  }
+
+  @override
+  void dispose() {
+    NotificationService.drugStockUpdate.removeListener(_onStockUpdate);
+    super.dispose();
+  }
+
+  void _onStockUpdate() {
+    final patch = NotificationService.drugStockUpdate.value;
+    if (patch == null || !mounted) return;
+
+    final id = patch['user_drug_id'].toString();
+    final i = items.indexWhere(
+      (x) => (x as Map<String, dynamic>)['user_drug_id'].toString() == id,
+    );
+    if (i < 0) return;
+
+    final d = Map<String, dynamic>.from(items[i] as Map);
+    final inv = d['inventory'] as Map<String, dynamic>?;
+    if (patch['new_quantity'] != null && inv != null) {
+      inv['quantity'] = patch['new_quantity'];
+    }
+    if (patch['stock_depleted'] == true) {
+      d['stock_depleted'] = true;
+      d['schedule_count_active'] = 0;
+      for (final s0 in (d['schedules'] ?? []) as List<dynamic>) {
+        (s0 as Map<String, dynamic>)['is_active'] = false;
+      }
+    }
+    setState(() => items[i] = d);
   }
 
   Future<void> _testNotification() async {
@@ -61,11 +93,16 @@ class _DrugsScreenState extends State<DrugsScreen> {
     }
   }
 
-  Future<void> _load() async {
+  /// [rescheduleNotifications]: false = sadece listeyi yenile (form zaten planladı).
+  Future<void> _load({bool rescheduleNotifications = true}) async {
     setState(() => loading = true);
     try {
       items = await api.listMyDrugs();
-      await NotificationService.rescheduleAllFromServerList(items);
+      if (rescheduleNotifications) {
+        await NotificationService.rescheduleAllFromServerList(items);
+      } else {
+        await NotificationService.reconcileMissedDoses(items);
+      }
     } on DioException catch (e) {
       // 401: token yok/bozuk
       if (e.response?.statusCode == 401) {
@@ -153,7 +190,7 @@ class _DrugsScreenState extends State<DrugsScreen> {
             context,
             MaterialPageRoute(builder: (_) => DrugFormScreen(client: widget.client)),
           );
-          if (ok == true) _load();
+          if (ok == true) _load(rescheduleNotifications: false);
         },
       ),
       body: Container(
@@ -216,6 +253,8 @@ class _DrugsScreenState extends State<DrugsScreen> {
                             final d = items[i] as Map<String, dynamic>;
                             final name = (d['drug_name'] ?? '').toString();
                             final lowStock = (d['low_stock'] ?? false) == true;
+                            final stockDepleted =
+                                (d['stock_depleted'] ?? false) == true;
                             final scheduleCount =
                                 (d['schedule_count_active'] ?? 0).toString();
 
@@ -232,7 +271,9 @@ class _DrugsScreenState extends State<DrugsScreen> {
                                     ),
                                   ),
                                 );
-                                if (changed == true) _load();
+                                if (changed == true) {
+                                  _load(rescheduleNotifications: false);
+                                }
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(16),
@@ -314,7 +355,27 @@ class _DrugsScreenState extends State<DrugsScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    if (lowStock)
+                                    if (stockDepleted)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                          color: AppColors.warningLight,
+                                        ),
+                                        child: Text(
+                                          'Stok bitti',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.warning,
+                                          ),
+                                        ),
+                                      )
+                                    else if (lowStock)
                                       Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 10,

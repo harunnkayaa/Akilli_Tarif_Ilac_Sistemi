@@ -6,6 +6,81 @@ from sqlalchemy import and_, or_
 from app.core.models.pantry_items import PantryItem
 from app.core.models.shopping_list_items import ShoppingListItem
 
+
+def _norm_shopping_name(name: Optional[str]) -> str:
+    return (name or "").strip().casefold()
+
+
+def _find_unchecked_shopping(db: Session, user_id, name: str) -> Optional[ShoppingListItem]:
+    """Aynı ürün adı ingredient_id veya item_text ile kayıtlıysa tek satır bul."""
+    key = _norm_shopping_name(name)
+    if not key:
+        return None
+    rows = (
+        db.query(ShoppingListItem)
+        .filter(
+            ShoppingListItem.user_id == user_id,
+            ShoppingListItem.is_checked == False,  # noqa: E712
+        )
+        .all()
+    )
+    for row in rows:
+        for field in (row.ingredient_id, row.item_text):
+            if field and _norm_shopping_name(field) == key:
+                return row
+    return None
+
+
+def dedupe_shopping_list(db: Session, user_id) -> int:
+    """Aynı isimli işaretlenmemiş satırları birleştir; fazlaları sil."""
+    rows = (
+        db.query(ShoppingListItem)
+        .filter(
+            ShoppingListItem.user_id == user_id,
+            ShoppingListItem.is_checked == False,  # noqa: E712
+        )
+        .all()
+    )
+    groups: dict[str, list] = {}
+    for row in rows:
+        label = row.ingredient_id or row.item_text
+        key = _norm_shopping_name(label)
+        if not key:
+            continue
+        groups.setdefault(key, []).append(row)
+
+    removed = 0
+    for group in groups.values():
+        if len(group) <= 1:
+            continue
+        # ingredient_id dolu olanı tercih et, sonra en eski
+        group.sort(key=lambda r: (0 if r.ingredient_id else 1, r.created_at))
+        keeper = group[0]
+        if keeper.ingredient_id is None and keeper.item_text:
+            # stok kaydı varsa ingredient_id'ye bağla
+            pantry = (
+                db.query(PantryItem)
+                .filter(
+                    PantryItem.user_id == user_id,
+                    PantryItem.ingredient_id == keeper.item_text,
+                )
+                .first()
+            )
+            if pantry:
+                keeper.ingredient_id = pantry.ingredient_id
+                keeper.item_text = None
+        for dup in group[1:]:
+            if dup.target_qty is not None:
+                keeper.target_qty = float(keeper.target_qty or 0) + float(dup.target_qty)
+            if keeper.unit is None and dup.unit is not None:
+                keeper.unit = dup.unit
+            db.delete(dup)
+            removed += 1
+    if removed:
+        db.flush()
+    return removed
+
+
 def list_pantry(db: Session, user_id) -> List[PantryItem]:
     return (
         db.query(PantryItem)
@@ -15,19 +90,21 @@ def list_pantry(db: Session, user_id) -> List[PantryItem]:
     )
 
 def _delete_auto_shopping_if_exists(db: Session, user_id, ingredient_id: str):
-    # unchecked auto satırı sil (ingredient_id dolu olan)
-    q = (
+    # Aynı isimli tüm işaretlenmemiş satırları sil (ingredient_id veya item_text)
+    key = _norm_shopping_name(ingredient_id)
+    rows = (
         db.query(ShoppingListItem)
         .filter(
-            and_(
-                ShoppingListItem.user_id == user_id,
-                ShoppingListItem.ingredient_id == ingredient_id,
-                ShoppingListItem.is_checked == False,  # noqa: E712
-            )
+            ShoppingListItem.user_id == user_id,
+            ShoppingListItem.is_checked == False,  # noqa: E712
         )
+        .all()
     )
-    for it in q.all():
-        db.delete(it)
+    for it in rows:
+        for field in (it.ingredient_id, it.item_text):
+            if field and _norm_shopping_name(field) == key:
+                db.delete(it)
+                break
 
 def upsert_pantry_item(
     db: Session,
@@ -97,27 +174,20 @@ def get_pantry_alerts(db: Session, user_id):
             alerts.append({"ingredient_id": it.ingredient_id, "quantity": qty, "low_threshold": low, "status": "LOW"})
     return alerts
 
+def pantry_quantity_map(db: Session, user_id) -> dict:
+    rows = db.query(PantryItem).filter(PantryItem.user_id == user_id).all()
+    return {r.ingredient_id: float(r.quantity or 0) for r in rows}
+
 def list_shopping(db: Session, user_id) -> List[ShoppingListItem]:
     return (
         db.query(ShoppingListItem)
         .filter(ShoppingListItem.user_id == user_id)
-        .order_by(ShoppingListItem.is_checked.asc(), ShoppingListItem.created_at.desc())
+        .order_by(ShoppingListItem.created_at.asc())
         .all()
     )
 
 def add_manual_shopping_item(db: Session, user_id, item_text: str, target_qty: Optional[float], unit: Optional[str]):
-    # aynı text unchecked ise target_qty biriktir
-    existing = (
-        db.query(ShoppingListItem)
-        .filter(
-            and_(
-                ShoppingListItem.user_id == user_id,
-                ShoppingListItem.item_text == item_text,
-                ShoppingListItem.is_checked == False,  # noqa: E712
-            )
-        )
-        .first()
-    )
+    existing = _find_unchecked_shopping(db, user_id, item_text)
     if existing:
         if target_qty is not None:
             existing.target_qty = float(existing.target_qty or 0) + float(target_qty)
@@ -139,18 +209,10 @@ def add_manual_shopping_item(db: Session, user_id, item_text: str, target_qty: O
     return item
 
 def ensure_auto_item_exists(db: Session, user_id, ingredient_id: str, unit: Optional[str], target_qty: Optional[float]):
-    existing = (
-        db.query(ShoppingListItem)
-        .filter(
-            and_(
-                ShoppingListItem.user_id == user_id,
-                ShoppingListItem.ingredient_id == ingredient_id,
-                ShoppingListItem.is_checked == False,  # noqa: E712
-            )
-        )
-        .first()
-    )
+    existing = _find_unchecked_shopping(db, user_id, ingredient_id)
     if existing:
+        existing.ingredient_id = ingredient_id
+        existing.item_text = None
         if existing.unit is None and unit is not None:
             existing.unit = unit
         if existing.target_qty is None and target_qty is not None:
@@ -189,6 +251,7 @@ def delete_shopping_item(db: Session, user_id, item_id) -> bool:
     if not item:
         return False
     db.delete(item)
+    db.flush()
     return True
 
 def refresh_shopping_from_pantry(db: Session, user_id):
@@ -215,4 +278,5 @@ def refresh_shopping_from_pantry(db: Session, user_id):
         )
         processed += 1
 
-    return {"matched": len(pantry_low), "processed": processed}
+    deduped = dedupe_shopping_list(db, user_id)
+    return {"matched": len(pantry_low), "processed": processed, "deduped": deduped}

@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-IntakeAction = Literal["TAKEN", "SNOOZE", "SKIP"]
+IntakeAction = Literal["TAKEN", "SNOOZE", "SKIP", "MISSED"]
 
 
 class IntakeCreate(BaseModel):
@@ -27,3 +27,4 @@ class IntakeResult(BaseModel):
     user_drug_id: UUID
     new_quantity: Optional[int] = None
     remind_at: Optional[datetime] = None
+    stock_depleted: bool = False

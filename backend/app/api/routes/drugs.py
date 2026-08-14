@@ -17,6 +17,26 @@ from app.core.models.user_drug import UserDrug
 router = APIRouter(prefix="/drugs", tags=["drugs"])
 
 
+def _drug_flags(drug: UserDrug) -> tuple[int, bool, bool]:
+    active_count = sum(1 for s in (drug.schedules or []) if s.is_active)
+    low_stock = False
+    stock_depleted = False
+    if drug.inventory is not None:
+        qty = drug.inventory.quantity or 0
+        low_stock = qty <= drug.inventory.low_threshold and qty > 0
+        stock_depleted = qty <= 0
+    return active_count, low_stock, stock_depleted
+
+
+def _to_drug_out(drug: UserDrug) -> UserDrugOut:
+    active_count, low_stock, stock_depleted = _drug_flags(drug)
+    item = UserDrugOut.model_validate(drug)
+    item.schedule_count_active = active_count
+    item.low_stock = low_stock
+    item.stock_depleted = stock_depleted
+    return item
+
+
 @router.get("/suggest", response_model=List[str])
 def suggest(q: str = Query(..., min_length=1), db: Session = Depends(get_db)):
     return crud.suggest_drug_names(db, q=q, limit=10)
@@ -37,15 +57,7 @@ def get_drug(
     if not drug:
         raise HTTPException(status_code=404, detail="Drug not found")
 
-    active_count = sum(1 for s in (drug.schedules or []) if s.is_active)
-    low_stock = False
-    if drug.inventory is not None:
-        low_stock = drug.inventory.quantity <= drug.inventory.low_threshold
-
-    item = UserDrugOut.model_validate(drug)
-    item.schedule_count_active = active_count
-    item.low_stock = low_stock
-    return item
+    return _to_drug_out(drug)
 
 
 @router.get("", response_model=List[UserDrugOut])
@@ -55,19 +67,7 @@ def list_my_drugs(
 ):
     drugs = crud.list_user_drugs(db, user_id=current_user.user_id)
 
-    out: List[UserDrugOut] = []
-    for d in drugs:
-        active_count = sum(1 for s in (d.schedules or []) if s.is_active)
-        low_stock = False
-        if d.inventory is not None:
-            low_stock = d.inventory.quantity <= d.inventory.low_threshold
-
-        item = UserDrugOut.model_validate(d)  # pydantic v2
-        item.schedule_count_active = active_count
-        item.low_stock = low_stock
-        out.append(item)
-
-    return out
+    return [_to_drug_out(d) for d in drugs]
 
 
 @router.post("", response_model=UserDrugOut, status_code=201)
@@ -78,15 +78,7 @@ def create_drug(
 ):
     drug = crud.create_user_drug(db, user_id=current_user.user_id, payload=payload)
 
-    active_count = sum(1 for s in (drug.schedules or []) if s.is_active)
-    low_stock = False
-    if drug.inventory is not None:
-        low_stock = drug.inventory.quantity <= drug.inventory.low_threshold
-
-    item = UserDrugOut.model_validate(drug)
-    item.schedule_count_active = active_count
-    item.low_stock = low_stock
-    return item
+    return _to_drug_out(drug)
 
 
 @router.put("/{user_drug_id}", response_model=UserDrugOut)
@@ -105,15 +97,7 @@ def update_drug(
     if not drug:
         raise HTTPException(status_code=404, detail="Drug not found")
 
-    active_count = sum(1 for s in (drug.schedules or []) if s.is_active)
-    low_stock = False
-    if drug.inventory is not None:
-        low_stock = drug.inventory.quantity <= drug.inventory.low_threshold
-
-    item = UserDrugOut.model_validate(drug)
-    item.schedule_count_active = active_count
-    item.low_stock = low_stock
-    return item
+    return _to_drug_out(drug)
 
 
 @router.delete("/{user_drug_id}", status_code=204)

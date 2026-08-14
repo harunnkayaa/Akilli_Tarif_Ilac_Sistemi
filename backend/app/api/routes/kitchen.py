@@ -65,7 +65,28 @@ def pantry_alerts(db: Session = Depends(get_db), user=Depends(get_current_user))
 
 @router.get("/shopping-list", response_model=list[ShoppingItemOut])
 def get_shopping(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    return kitchen_crud.list_shopping(db, user.user_id)
+    kitchen_crud.dedupe_shopping_list(db, user.user_id)
+    db.commit()
+    items = kitchen_crud.list_shopping(db, user.user_id)
+    qty_map = kitchen_crud.pantry_quantity_map(db, user.user_id)
+    out: list[ShoppingItemOut] = []
+    for it in items:
+        key = it.ingredient_id or it.item_text
+        current = qty_map.get(key) if key else None
+        out.append(
+            ShoppingItemOut(
+                item_id=it.item_id,
+                user_id=it.user_id,
+                ingredient_id=it.ingredient_id,
+                item_text=it.item_text,
+                current_qty=current,
+                target_qty=float(it.target_qty) if it.target_qty is not None else None,
+                unit=it.unit,
+                is_checked=it.is_checked,
+                created_at=it.created_at,
+            )
+        )
+    return out
 
 @router.post("/shopping-list/manual", response_model=ShoppingItemOut)
 def add_manual(payload: ShoppingManualAddIn, db: Session = Depends(get_db), user=Depends(get_current_user)):

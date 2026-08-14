@@ -19,6 +19,7 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> {
   bool _loading = true;
   List<dynamic> _pantry = [];
   List<dynamic> _alerts = [];
+  int _shoppingOpenCount = 0;
 
   // suggestions (recipes.malzemeler_json -> Malzeme_Adi)
   final _nameCtrl = TextEditingController();
@@ -46,9 +47,15 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> {
     try {
       final pantry = await widget.api.getPantry();
       final alerts = await widget.api.getPantryAlerts();
+      final shopping = await widget.api.getShoppingList();
+      final openShopping = shopping.where((e) {
+        final m = e as Map<String, dynamic>;
+        return m['is_checked'] != true;
+      }).length;
       setState(() {
         _pantry = pantry;
         _alerts = alerts;
+        _shoppingOpenCount = openShopping;
       });
     } finally {
       setState(() => _loading = false);
@@ -473,6 +480,8 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> {
                                           builder: (_) =>
                                               PantryListScreen(
                                             api: widget.api,
+                                            onEditItem: (item) =>
+                                                _openAddDialog(existing: item),
                                           ),
                                         ),
                                       ).then((_) => _load());
@@ -510,16 +519,15 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  '${_alerts.length} ürün kritik/bitti. Listeye eklendi.',
+                                  _alerts.length == _shoppingOpenCount
+                                      ? '${_alerts.length} ürün kritik/bitti. Alışveriş listesinde ${_shoppingOpenCount} ürün.'
+                                      : '${_alerts.length} ürün stokta kritik/bitti. Alışveriş listesinde $_shoppingOpenCount ürün var.',
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w800),
                                 ),
                               ),
                               TextButton(
-                                onPressed: () async {
-                                  await widget.api
-                                      .refreshShoppingFromPantry();
-                                  if (!mounted) return;
+                                onPressed: () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -527,7 +535,7 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> {
                                           ShoppingListScreen(
                                               api: widget.api),
                                     ),
-                                  );
+                                  ).then((_) => _load());
                                 },
                                 child: const Text('Göster'),
                               ),
@@ -560,10 +568,7 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> {
                                   ),
                                 ),
                                 IconButton(
-                                  onPressed: () async {
-                                    await widget.api
-                                        .refreshShoppingFromPantry();
-                                    if (!mounted) return;
+                                  onPressed: () {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
@@ -571,7 +576,7 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> {
                                             ShoppingListScreen(
                                                 api: widget.api),
                                       ),
-                                    );
+                                    ).then((_) => _load());
                                   },
                                   icon: const Icon(
                                       Icons.open_in_new),
@@ -588,10 +593,7 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: OutlinedButton.icon(
-                                onPressed: () async {
-                                  await widget.api
-                                      .refreshShoppingFromPantry();
-                                  if (!mounted) return;
+                                onPressed: () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -599,7 +601,7 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> {
                                           ShoppingListScreen(
                                               api: widget.api),
                                     ),
-                                  );
+                                  ).then((_) => _load());
                                 },
                                 icon: const Icon(Icons.list_alt),
                                 label: const Text(

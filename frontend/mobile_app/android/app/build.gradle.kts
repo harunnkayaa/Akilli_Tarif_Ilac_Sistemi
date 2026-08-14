@@ -39,8 +39,9 @@ android {
 }
 
 dependencies {
-    // ✅ flutter_local_notifications için zorunlu
+    // ✅ flutter_local_notifications için zorunlu   
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    implementation("com.google.code.gson:gson:2.11.0")
 }
 
 flutter {

@@ -119,10 +119,10 @@ class _LoginScreenState extends State<LoginScreen> {
           message: 'Bir hata oluştu. Lütfen tekrar deneyin.',
         );
       }
-    } catch (_) {
+    } catch (e) {
       await _showDialog(
         title: 'Giriş Başarısız',
-        message: 'Bir hata oluştu. Lütfen tekrar deneyin.',
+        message: e.toString(),
       );
     } finally {
       if (mounted) setState(() => _loading = false);

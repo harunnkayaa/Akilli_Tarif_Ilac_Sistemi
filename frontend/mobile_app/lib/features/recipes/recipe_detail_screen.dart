@@ -8,6 +8,8 @@ class RecipeDetailScreen extends StatefulWidget {
   final String initialTitle;
   /// 1 = stok olmadan (partial stock allowed), 2 = stoka göre (show add-pantry popup if missing)
   final int initialMode;
+  /// false iken sadece tarif görüntülenir (ör. ana sayfa son yemekler).
+  final bool showCookButton;
 
   const RecipeDetailScreen({
     super.key,
@@ -15,6 +17,7 @@ class RecipeDetailScreen extends StatefulWidget {
     required this.recipeId,
     required this.initialTitle,
     this.initialMode = 1,
+    this.showCookButton = true,
   });
 
   @override
@@ -72,11 +75,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       });
 
       if (result.success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tarif kaydedildi. Günlük besin değerleriniz güncellendi.'),
-          ),
-        );
+        _showCookSuccessDialog();
         return;
       }
 
@@ -108,6 +107,61 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         ),
       );
     }
+  }
+
+  void _showCookSuccessDialog() {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 340),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 72,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Tarif kaydedildi',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Günlük besin değerleriniz güncellendi.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      height: 1.35,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('Tamam'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _showAddPantryDialog(List<String> missing) {
@@ -268,15 +322,17 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               ),
             ),
           ],
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _cooking ? null : _handleCook,
-              icon: const Icon(Icons.playlist_add_check),
-              label: Text(_cooking ? 'İşleniyor...' : 'Bu tarifi yap'),
+          if (widget.showCookButton) ...[
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _cooking ? null : _handleCook,
+                icon: const Icon(Icons.playlist_add_check),
+                label: Text(_cooking ? 'İşleniyor...' : 'Bu tarifi yap'),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

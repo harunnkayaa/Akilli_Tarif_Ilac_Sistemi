@@ -16,6 +16,25 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   bool _loading = true;
   List<dynamic> _items = [];
 
+  String _fmtQty(dynamic v) {
+    if (v == null) return '-';
+    final d = (v is num) ? v.toDouble() : double.tryParse(v.toString()) ?? 0;
+    if ((d - d.round()).abs() < 0.000001) return d.round().toString();
+    return d.toStringAsFixed(2);
+  }
+
+  String _subtitleFor(Map<String, dynamic> m) {
+    final targetQty = m['target_qty'];
+    final currentQty = m['current_qty'];
+    final unit = m['unit']?.toString() ?? '';
+    final unitSuffix = unit.isEmpty ? '' : ' $unit';
+
+    if (currentQty != null) {
+      return 'Kalan: ${_fmtQty(currentQty)}$unitSuffix  |  Hedef: ${_fmtQty(targetQty)}$unitSuffix';
+    }
+    return 'Hedef: ${_fmtQty(targetQty)}$unitSuffix';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -300,18 +319,29 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
             final ingredientId = m['ingredient_id']?.toString();
             final itemText = m['item_text']?.toString();
             final title = ingredientId ?? itemText ?? '—';
-            final targetQty = m['target_qty'];
-            final unit = m['unit'];
 
             return Card(
+              key: ValueKey(id),
               color: AppColors.surface,
               elevation: 2,
               child: ListTile(
                 leading: Checkbox(
                   value: checked,
                   onChanged: (v) async {
-                    await widget.api.setShoppingChecked(id, v == true);
-                    await _load();
+                    final newChecked = v == true;
+                    final prev = Map<String, dynamic>.from(m);
+                    setState(() {
+                      _items[i] = {...m, 'is_checked': newChecked};
+                    });
+                    try {
+                      await widget.api.setShoppingChecked(id, newChecked);
+                    } catch (_) {
+                      if (!mounted) return;
+                      setState(() => _items[i] = prev);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Durum güncellenemedi.')),
+                      );
+                    }
                   },
                 ),
                 title: Text(
@@ -321,12 +351,25 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                subtitle: Text('Hedef: ${targetQty ?? "-"} ${unit ?? ""}'),
+                subtitle: Text(_subtitleFor(m)),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () async {
-                    await widget.api.deleteShoppingItem(id);
-                    await _load();
+                    final removed = Map<String, dynamic>.from(m);
+                    setState(() => _items = List.from(_items)..removeAt(i));
+                    try {
+                      await widget.api.deleteShoppingItem(id);
+                    } catch (_) {
+                      if (!mounted) return;
+                      setState(() {
+                        final next = List<dynamic>.from(_items);
+                        next.insert(i, removed);
+                        _items = next;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Silinemedi. Tekrar deneyin.')),
+                      );
+                    }
                   },
                 ),
               ),

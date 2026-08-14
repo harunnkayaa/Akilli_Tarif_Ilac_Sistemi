@@ -14,3 +14,19 @@ class TokenStore {
 
   Future<void> deleteToken() => _storage.delete(key: _key);
 }
+/*
+class TokenStore {
+  static String? _token;
+
+  Future<void> saveToken(String token) async {
+    _token = token;
+  }
+
+  Future<String?> readToken() async {
+    return _token;
+  }
+
+  Future<void> deleteToken() async {
+    _token = null;
+  }
+}*/

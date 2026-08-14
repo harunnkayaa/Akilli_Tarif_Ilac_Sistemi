@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/api_client.dart';
 import 'core/app_colors.dart';
+import 'core/app_navigator.dart';
 import 'core/token_store.dart';
 
 import 'features/auth/auth_api.dart';
@@ -15,7 +16,7 @@ import 'features/drugs/services/notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.ensureInitialized();
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -25,11 +26,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokenStore = TokenStore();
     final client = ApiClient(tokenStore);
+    NotificationService.configure(client);
     final authApi = AuthApi(client, tokenStore);
 
     final seed = AppColors.primary;
 
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Akıllı Tarif & İlaç',
 

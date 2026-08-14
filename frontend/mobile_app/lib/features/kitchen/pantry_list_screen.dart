@@ -6,7 +6,14 @@ import 'kitchen_api.dart';
 
 class PantryListScreen extends StatefulWidget {
   final KitchenApi api;
-  const PantryListScreen({super.key, required this.api});
+  /// Ana mutfak ekranındaki stok düzenleme diyaloğunu açar.
+  final Future<void> Function(Map<String, dynamic> item)? onEditItem;
+
+  const PantryListScreen({
+    super.key,
+    required this.api,
+    this.onEditItem,
+  });
 
   @override
   State<PantryListScreen> createState() => _PantryListScreenState();
@@ -98,6 +105,16 @@ class _PantryListScreenState extends State<PantryListScreen> {
                 child: ListTile(
                   title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
                   subtitle: Text('Miktar: $qty $unit  |  Eşik: $low'),
+                  trailing: widget.onEditItem == null
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.edit_outlined),
+                          onPressed: () async {
+                            await widget.onEditItem!(m);
+                            if (!mounted) return;
+                            await _load();
+                          },
+                        ),
                 ),
               );
             }).toList(),

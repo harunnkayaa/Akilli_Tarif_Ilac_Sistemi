@@ -520,7 +520,7 @@ def suggest_recipes(
             card["debug_final_score"] = item.get("debug_final_score")
         cards.append(card)
 
-    NO_RECIPE_MESSAGE = "Veritabanımızda bu isteğe uygun tarif bulunmamaktadır. Bizi uyardığınız için teşekkürler."
+    NO_RECIPE_MESSAGE = "Şu an bu isteğe uygun tarif öneremiyorum. Farklı bir malzeme veya yemek türü deneyebilirsiniz. Alerji, hastalık ve ilaç bilgileriniz güvenlik için bazı tarifleri eleyebilir."
     assistant_text = NO_RECIPE_MESSAGE if not cards else "—"
     polish_from_llm = False
 

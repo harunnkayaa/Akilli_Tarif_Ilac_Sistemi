@@ -19,7 +19,7 @@ def intake(
     current_user=Depends(get_current_user),
 ):
     try:
-        idempotent, new_qty, remind_at = crud_intake.apply_intake(
+        idempotent, new_qty, remind_at, resolved_action, stock_depleted = crud_intake.apply_intake(
             db=db,
             user_id=current_user.user_id,
             user_drug_id=payload.user_drug_id,
@@ -30,10 +30,11 @@ def intake(
         )
         return IntakeResult(
             idempotent=idempotent,
-            action=payload.action,
+            action=resolved_action,
             user_drug_id=payload.user_drug_id,
             new_quantity=new_qty,
             remind_at=remind_at,
+            stock_depleted=stock_depleted,
         )
     except ValueError as e:
         msg = str(e)

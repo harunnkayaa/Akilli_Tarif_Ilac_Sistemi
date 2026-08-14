@@ -42,17 +42,22 @@ def apply_intake(
     user_id: UUID,
     user_drug_id: UUID,
     client_event_id: str,
-    action: str,  # TAKEN / SNOOZE / SKIP
+    action: str,  # TAKEN / SNOOZE / SKIP / MISSED
     scheduled_at: Optional[datetime],
     snooze_minutes: int,
-) -> Tuple[bool, Optional[int], Optional[datetime]]:
+) -> Tuple[bool, Optional[int], Optional[datetime], str, bool]:
     """
-    Returns: (idempotent, new_quantity, remind_at)
+    Returns: (idempotent, new_quantity, remind_at, resolved_action)
     """
 
     action = (action or "").upper().strip()
-    if action not in ("TAKEN", "SNOOZE", "SKIP"):
+    if action not in ("TAKEN", "SNOOZE", "SKIP", "MISSED"):
         raise ValueError("Invalid action")
+
+    # Mobil tarafta otomatik kaçırılan ilaç MISSED gelebilir.
+    # Veritabanında MISSED action yok, bu durum sistemde SKIP gibi tutulur.
+    if action == "MISSED":
+        action = "SKIP"
 
     # 1) idempotency check (same occurrence)
     existing = (
@@ -64,6 +69,46 @@ def apply_intake(
         .first()
     )
     if existing:
+        if action == "SKIP" and existing.action == "SNOOZE":
+            now = datetime.now(timezone.utc)
+            sp = (
+                db.query(DrugSnoozePlan)
+                .filter(
+                    DrugSnoozePlan.intake_event_id == existing.intake_event_id,
+                    DrugSnoozePlan.is_active == True,
+                )
+                .order_by(DrugSnoozePlan.created_at.desc())
+                .first()
+            )
+            remind_at_snooze = sp.remind_at if sp else None
+            grace = timedelta(minutes=max(1, int(snooze_minutes or 5)) + 1)
+            if remind_at_snooze and now >= remind_at_snooze + grace:
+                existing.action = "SKIP"
+                db.query(DrugSnoozePlan).filter(
+                    DrugSnoozePlan.intake_event_id == existing.intake_event_id,
+                    DrugSnoozePlan.is_active == True,
+                ).update({"is_active": False})
+                db.commit()
+                return True, None, None, "SKIP", False
+
+        # Tekrar Ertele: aynı doz için remind_at güncellenir (+5 dk)
+        if action == "SNOOZE" and existing.action == "SNOOZE":
+            now = datetime.now(timezone.utc)
+            remind_at = now + timedelta(minutes=max(1, int(snooze_minutes or 5)))
+            db.query(DrugSnoozePlan).filter(
+                DrugSnoozePlan.intake_event_id == existing.intake_event_id,
+                DrugSnoozePlan.is_active == True,
+            ).update({"is_active": False})
+            db.add(
+                DrugSnoozePlan(
+                    intake_event_id=existing.intake_event_id,
+                    remind_at=remind_at,
+                    is_active=True,
+                )
+            )
+            db.commit()
+            return True, None, remind_at, "SNOOZE", False
+
         remind_at = None
         if existing.action == "SNOOZE":
             sp = (
@@ -78,11 +123,14 @@ def apply_intake(
             remind_at = sp.remind_at if sp else None
 
         new_qty = None
+        depleted = False
         if existing.action == "TAKEN":
             inv = db.query(DrugInventory).filter(DrugInventory.user_drug_id == user_drug_id).first()
-            new_qty = inv.quantity if inv else None
+            if inv is not None:
+                new_qty = inv.quantity
+                depleted = (inv.quantity or 0) <= 0
 
-        return True, new_qty, remind_at
+        return True, new_qty, remind_at, existing.action, depleted
 
     # 2) ownership + load schedules/inventory
     drug: UserDrug | None = (
@@ -113,6 +161,7 @@ def apply_intake(
 
     remind_at: Optional[datetime] = None
     new_qty: Optional[int] = None
+    stock_depleted = False
 
     if action == "TAKEN":
         inv = drug.inventory
@@ -121,6 +170,10 @@ def apply_intake(
         else:
             inv.quantity = max(0, (inv.quantity or 0) - dose)
             new_qty = inv.quantity
+            if new_qty <= 0:
+                stock_depleted = True
+                for sched in drug.schedules or []:
+                    sched.is_active = False
 
     elif action == "SKIP":
         # stok düşmez
@@ -146,4 +199,4 @@ def apply_intake(
         )
 
     db.commit()
-    return False, new_qty, remind_at
+    return False, new_qty, remind_at, action, stock_depleted

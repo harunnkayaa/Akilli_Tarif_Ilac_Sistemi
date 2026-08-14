@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 import '../../../core/api_client.dart';
 import '../../../core/app_colors.dart';
@@ -27,8 +28,11 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
 
   bool _refreshing = false;
 
-  bool loadingInteractions = false;
-  List<dynamic> interactions = [];
+  /// Liste yenilemesi için: düzenleme kaydından sonra geri dönünce true ile pop.
+  bool _editedSinceOpen = false;
+
+  // bool loadingInteractions = false;
+  // List<dynamic> interactions = [];
 
   bool _intakeBusy = false;
 
@@ -127,41 +131,68 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
 
   // ------------------ UI HELPERS ------------------
 
-  Future<void> _loadInteractions() async {
-    setState(() => loadingInteractions = true);
-    try {
-      final id = _drug['user_drug_id'].toString();
-      interactions = await api.interactions(id);
-    } finally {
-      if (mounted) setState(() => loadingInteractions = false);
-    }
-  }
+  // Future<void> _loadInteractions() async {
+  //   setState(() => loadingInteractions = true);
+  //   try {
+  //     final id = _drug['user_drug_id'].toString();
+  //     interactions = await api.interactions(id);
+  //   } finally {
+  //     if (mounted) setState(() => loadingInteractions = false);
+  //   }
+  // }
 
   Map<String, dynamic>? _findPendingSchedule() {
     if (!_handledLoaded) return null;
 
     final userDrugId = _drug['user_drug_id'].toString();
-    final now = DateTime.now();
+    final now = tz.TZDateTime.now(tz.local);
 
     // ✅ 0) Önce snooze pending varsa onu göster
     if (_pendingSnooze != null) {
       final scheduledAtIso = _pendingSnooze!['scheduled_at']?.toString();
-      final timeStr = _pendingSnooze!['time_of_day']?.toString() ?? '';
+      final timeStr = NotificationService.normalizeTimeOfDay(
+        _pendingSnooze!['time_of_day']?.toString() ?? '',
+      );
       if (scheduledAtIso != null && scheduledAtIso.isNotEmpty) {
-        final scheduled = DateTime.tryParse(scheduledAtIso);
+        tz.TZDateTime? scheduled;
+        try {
+          scheduled = tz.TZDateTime.parse(tz.local, scheduledAtIso);
+        } catch (_) {
+          final d = DateTime.tryParse(scheduledAtIso);
+          if (d != null) scheduled = tz.TZDateTime.from(d, tz.local);
+        }
         if (scheduled != null) {
           final diffMin = scheduled.difference(now).inMinutes;
 
           // snooze penceresi: geçmiş 60dk ile gelecek 60dk
           if (diffMin >= -60 && diffMin <= 60) {
-            final baseEventId = 'evt|$userDrugId|$timeStr|$scheduledAtIso';
+            final doseIso = () {
+              final fromStore =
+                  _pendingSnooze!['dose_scheduled_at_iso']?.toString();
+              if (fromStore != null && fromStore.isNotEmpty) return fromStore;
+              return NotificationService.doseScheduledAtIsoForToday(timeStr);
+            }();
+            final baseEventId = NotificationService.baseEventIdFrom(
+              userDrugId: userDrugId,
+              timeStr: timeStr,
+              scheduledAtIso: doseIso,
+            );
             if (!_handledBaseEventIds.contains(baseEventId)) {
+              final intakeApiId =
+                  NotificationService.takeAfterSnoozeClientEventId(
+                userDrugId: userDrugId,
+                timeStr: timeStr,
+                doseScheduledAtIso: doseIso,
+                snoozeAlarmAtIso: scheduledAtIso,
+              );
               return {
                 'time_of_day': timeStr,
                 'dose_text': '1',
                 'scheduled_at_iso': scheduledAtIso,
+                'dose_scheduled_at_iso': doseIso,
                 'diff_min': diffMin,
                 'base_event_id': baseEventId,
+                'intake_api_client_event_id': intakeApiId,
                 'is_snooze': true,
               };
             }
@@ -182,20 +213,34 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
       final isActive = (s['is_active'] ?? true) == true;
       if (!isActive) continue;
 
-      final timeStr = (s['time_of_day'] ?? '').toString();
+      final timeStr = NotificationService.normalizeTimeOfDay(
+        (s['time_of_day'] ?? '').toString(),
+      );
       final parts = timeStr.split(':');
-      final hh = parts.isNotEmpty ? int.tryParse(parts[0]) ?? 9 : 9;
-      final mm = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+      final hh = int.tryParse(parts[0]) ?? 9;
+      final mm = int.tryParse(parts[1]) ?? 0;
 
-      final scheduledToday = DateTime(now.year, now.month, now.day, hh, mm);
+      var scheduledToday = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        hh,
+        mm,
+      );
       final diffMin = scheduledToday.difference(now).inMinutes;
 
       // pencere: geçmiş 60dk ile gelecek 10dk arası
       // (erken "Aldım" için 10 dk yeterli)
       if (diffMin < -60 || diffMin > 10) continue;
 
-      final scheduledAtIso = scheduledToday.toIso8601String();
-      final baseEventId = 'evt|$userDrugId|$timeStr|$scheduledAtIso';
+      final scheduledAtIso =
+          NotificationService.iso8601WithOffset(scheduledToday);
+      final baseEventId = NotificationService.baseEventIdFrom(
+        userDrugId: userDrugId,
+        timeStr: timeStr,
+        scheduledAtIso: scheduledAtIso,
+      );
 
       if (_handledBaseEventIds.contains(baseEventId)) continue;
 
@@ -206,6 +251,7 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
           'time_of_day': timeStr,
           'dose_text': (s['dose_text'] ?? '').toString(),
           'scheduled_at_iso': scheduledAtIso,
+          'dose_scheduled_at_iso': scheduledAtIso,
           'diff_min': diffMin,
           'base_event_id': baseEventId,
           'is_snooze': false,
@@ -222,50 +268,62 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
     required String timeStr,
     required String scheduledAtIso,
     required String baseEventId,
+    String? intakeApiClientEventId,
+    String? doseDayIsoOverride,
   }) async {
     if (_intakeBusy) return;
     setState(() => _intakeBusy = true);
 
     try {
-      final stableId = NotificationService.stableIdFrom(userDrugId, timeStr);
-      final fallbackId = NotificationService.fallbackIdFrom(stableId);
+      if (action == 'SNOOZE') {
+        await NotificationService.cancelDailyAlarmsForSlot(
+          userDrugId: userDrugId,
+          timeRaw: timeStr,
+        );
+      }
 
-      // ✅ app içinden basınca daily fallback iptal
-      await NotificationService.cancelFallbackByIds(fallbackId: fallbackId);
+      var intakeScheduledAt = scheduledAtIso;
+      if (action == 'SNOOZE') {
+        final when = tz.TZDateTime.now(tz.local).add(const Duration(minutes: 5));
+        intakeScheduledAt = NotificationService.iso8601WithOffset(when);
+      }
+
+      final cid = intakeApiClientEventId ?? baseEventId;
 
       // ✅ backend’e yaz
       final result = await api.intake(
         userDrugId: userDrugId,
-        clientEventId: baseEventId,
+        clientEventId: cid,
         action: action,
-        scheduledAtIso: scheduledAtIso,
+        scheduledAtIso: intakeScheduledAt,
         snoozeMinutes: 5,
       );
 
-      // ✅ UI stok güncelle (hemen)
-      final newQty = result['new_quantity'];
-      if (newQty != null) {
-        final inv = _drug['inventory'] as Map<String, dynamic>?;
-        if (inv != null) inv['quantity'] = newQty;
-      }
-
-      // ✅ KRİTİK FIX:
-      // TAKEN/SKIP olunca snooze bildirimini de öldür + pending snooze temizle.
       if (action == 'TAKEN' || action == 'SKIP') {
-        await NotificationService.cancelLastSnoozeIfAny(
+        await NotificationService.finishDoseAndScheduleNext(
           userDrugId: userDrugId,
           timeStr: timeStr,
+          baseEventId: baseEventId,
+          intakeResult: result,
+          localDrug: _drug,
         );
-        await NotificationService.clearPendingSnooze(userDrugId);
         if (mounted) setState(() => _pendingSnooze = null);
+      } else if (action == 'SNOOZE') {
+        await NotificationService.applyIntakeSideEffects(
+          userDrugId: userDrugId,
+          result: result,
+          localDrug: _drug,
+        );
       }
 
-      // ✅ SNOOZE olunca: local snooze schedule + pending reload
       if (action == 'SNOOZE') {
-        await NotificationService.scheduleOneOffSnoozeFromApp(
+        final doseIso = doseDayIsoOverride ??
+            NotificationService.doseScheduledAtIsoForToday(timeStr);
+        await NotificationService.scheduleSnoozeFromIntakeResult(
           userDrugId: userDrugId,
           timeStr: timeStr,
-          minutes: 5,
+          intakeResult: result,
+          doseScheduledAtIso: doseIso,
         );
         final snooze = await NotificationService.loadPendingSnooze(userDrugId);
         if (mounted) setState(() => _pendingSnooze = snooze);
@@ -273,11 +331,12 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
 
       if (!mounted) return;
 
-      // ✅ kartı kapat + kalıcı kaydet
-      _handledBaseEventIds.add(baseEventId);
-      await _saveHandledForToday(userDrugId);
+      if (action == 'TAKEN' || action == 'SKIP') {
+        _handledBaseEventIds.add(baseEventId);
+        await _saveHandledForToday(userDrugId);
+      }
 
-      setState(() {});
+      if (mounted) setState(() {});
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -311,9 +370,25 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
     final pending = _findPendingSchedule();
     final int? diffMin = pending?['diff_min'] as int?;
     final bool timeArrived = diffMin != null && diffMin <= 0;
+    final invQty =
+        int.tryParse(inv?['quantity']?.toString() ?? '') ?? 0;
+    final stockDepleted =
+        (d['stock_depleted'] == true) || invQty <= 0;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          Navigator.of(context).pop(_editedSinceOpen);
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: () => Navigator.pop(context, _editedSinceOpen),
+        ),
         title: Text(name),
         actions: [
           if (_refreshing)
@@ -392,6 +467,31 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
                 const Padding(
                   padding: EdgeInsets.only(bottom: 12),
                   child: LinearProgressIndicator(minHeight: 3),
+                ),
+              if (stockDepleted)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: AppColors.warningLight,
+                    border: Border.all(color: AppColors.warning.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Stok bitti. Hatırlatmalar durduruldu; ilaç pasif sayılır. Stok ekleyip saatleri yeniden açabilirsiniz.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               Container(
                 padding: const EdgeInsets.all(16),
@@ -503,11 +603,20 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
                                         userDrugId: userDrugId,
                                         timeStr: pending['time_of_day']
                                             .toString(),
-                                        scheduledAtIso: pending[
-                                                'scheduled_at_iso']
-                                            .toString(),
+                                        scheduledAtIso: pending['is_snooze'] ==
+                                                true
+                                            ? pending['dose_scheduled_at_iso']
+                                                .toString()
+                                            : pending['scheduled_at_iso']
+                                                .toString(),
                                         baseEventId: pending['base_event_id']
                                             .toString(),
+                                        intakeApiClientEventId:
+                                            pending['is_snooze'] == true
+                                                ? pending[
+                                                        'intake_api_client_event_id']
+                                                    ?.toString()
+                                                : null,
                                       ),
                               child: const Text('Aldım'),
                             ),
@@ -528,6 +637,9 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
                                               .toString(),
                                           baseEventId: pending['base_event_id']
                                               .toString(),
+                                          doseDayIsoOverride:
+                                              pending['dose_scheduled_at_iso']
+                                                  ?.toString(),
                                         ),
                                 child: const Text('Ertele'),
                               ),
@@ -543,10 +655,20 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
                                           timeStr: pending['time_of_day']
                                               .toString(),
                                           scheduledAtIso: pending[
-                                                  'scheduled_at_iso']
-                                              .toString(),
+                                                      'is_snooze'] ==
+                                                  true
+                                              ? pending['dose_scheduled_at_iso']
+                                                  .toString()
+                                              : pending['scheduled_at_iso']
+                                                  .toString(),
                                           baseEventId: pending['base_event_id']
                                               .toString(),
+                                          intakeApiClientEventId:
+                                              pending['is_snooze'] == true
+                                                  ? pending[
+                                                          'intake_api_client_event_id']
+                                                      ?.toString()
+                                                  : null,
                                         ),
                                 child: const Text('Atla'),
                               ),
@@ -687,6 +809,8 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
                           );
                           if (ok == true) {
                             if (!mounted) return;
+                            setState(() => _editedSinceOpen = true);
+                            // Bildirimler DrugFormScreen kayıtta planlandı
                             await _refreshDrug();
                           }
                         },
@@ -704,84 +828,86 @@ class _DrugDetailScreenState extends State<DrugDetailScreen> {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  color: AppColors.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed:
-                            loadingInteractions ? null : _loadInteractions,
-                        icon: const Icon(Icons.restaurant_rounded, size: 22),
-                        label: const Text('Besin etkileşimlerini getir'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          textStyle: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (loadingInteractions)
-                      const Center(child: CircularProgressIndicator()),
-                    if (!loadingInteractions && interactions.isNotEmpty) ...[
-                      Text(
-                        'Etkileşimler',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 8),
-                      ...interactions.map((x) {
-                        final m = x as Map<String, dynamic>;
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            color: AppColors.primaryLight,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                m['food_name_tr'].toString(),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium,
-                              ),
-                              const SizedBox(height: 6),
-                              Text('Etki: ${m['interaction_effect']}'),
-                              const SizedBox(height: 4),
-                              Text('Öneri: ${m['recommendation_tr']}'),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
-                  ],
-                ),
-              ),
+              // --- Besin etkileşimleri (geçici kapalı) ---
+              // Container(
+              //   padding: const EdgeInsets.all(16),
+              //   margin: const EdgeInsets.only(bottom: 16),
+              //   decoration: BoxDecoration(
+              //     borderRadius: BorderRadius.circular(20),
+              //     color: AppColors.surface,
+              //     boxShadow: [
+              //       BoxShadow(
+              //         color: Colors.black.withOpacity(0.03),
+              //         blurRadius: 8,
+              //         offset: const Offset(0, 3),
+              //       ),
+              //     ],
+              //   ),
+              //   child: Column(
+              //     crossAxisAlignment: CrossAxisAlignment.start,
+              //     children: [
+              //       SizedBox(
+              //         width: double.infinity,
+              //         child: FilledButton.icon(
+              //           onPressed:
+              //               loadingInteractions ? null : _loadInteractions,
+              //           icon: const Icon(Icons.restaurant_rounded, size: 22),
+              //           label: const Text('Besin etkileşimlerini getir'),
+              //           style: FilledButton.styleFrom(
+              //             padding: const EdgeInsets.symmetric(vertical: 16),
+              //             textStyle: const TextStyle(
+              //               fontSize: 16,
+              //               fontWeight: FontWeight.w600,
+              //             ),
+              //           ),
+              //         ),
+              //       ),
+              //       const SizedBox(height: 12),
+              //       if (loadingInteractions)
+              //         const Center(child: CircularProgressIndicator()),
+              //       if (!loadingInteractions && interactions.isNotEmpty) ...[
+              //         Text(
+              //           'Etkileşimler',
+              //           style: Theme.of(context)
+              //               .textTheme
+              //               .titleMedium
+              //               ?.copyWith(fontWeight: FontWeight.w600),
+              //         ),
+              //         const SizedBox(height: 8),
+              //         ...interactions.map((x) {
+              //           final m = x as Map<String, dynamic>;
+              //           return Container(
+              //             margin: const EdgeInsets.only(bottom: 10),
+              //             padding: const EdgeInsets.all(12),
+              //             decoration: BoxDecoration(
+              //               borderRadius: BorderRadius.circular(14),
+              //               color: AppColors.primaryLight,
+              //             ),
+              //             child: Column(
+              //               crossAxisAlignment: CrossAxisAlignment.start,
+              //               children: [
+              //                 Text(
+              //                   m['food_name_tr'].toString(),
+              //                   style: Theme.of(context)
+              //                       .textTheme
+              //                       .titleMedium,
+              //                 ),
+              //                 const SizedBox(height: 6),
+              //                 Text('Etki: ${m['interaction_effect']}'),
+              //                 const SizedBox(height: 4),
+              //                 Text('Öneri: ${m['recommendation_tr']}'),
+              //               ],
+              //             ),
+              //           );
+              //         }),
+              //       ],
+              //     ],
+              //   ),
+              // ),
             ],
           ),
         ),
+      ),
       ),
     );
   }
