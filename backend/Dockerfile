@@ -15,4 +15,6 @@ COPY app ./app
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Render gibi platformlar dinlenecek portu PORT değişkeniyle bildirir.
+# Tanımlı değilse (yerel docker compose) 8000 kullanılır.
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
