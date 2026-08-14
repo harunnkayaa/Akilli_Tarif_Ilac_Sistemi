@@ -68,6 +68,9 @@ token.json
 *.sql
 *.bak
 
+# Teslim için gereken seed dump'ı: bu olmadan proje boş veritabanıyla açılır
+!backend/db/init/*.sql
+
 # =========================
 # Flutter / Dart
 # =========================
@@ -100,5 +103,7 @@ tmp/
 .cache/
 dist/
 
-# Recipe images (store outside git)
-backend/app/static/recipes/
+# Tarif görselleri: teslim/deploy için repoda tutuluyor.
+# Render imajı GitHub'dan derlediği için bunlar olmazsa tüm tarif
+# fotoğrafları kırık görünür (1088 dosya, ~48 MB).
+

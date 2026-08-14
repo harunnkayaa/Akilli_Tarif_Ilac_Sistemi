@@ -1,0 +1,17 @@
+# İmaja girmemesi gerekenler (boyut + güvenlik)
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Secret: imaja gömülmez, çalışma anında ortam değişkeniyle verilir
+.env
+
+# 20 MB'lık dump imaja değil, DB container'ına mount edilir
+db/
+
+# Geliştirme dokümanları
+schema_docs/
+docker/
+*.md
+.DS_Store

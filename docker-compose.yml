@@ -1,0 +1,60 @@
+# Akıllı Tarif & İlaç Sistemi — backend + veritabanı
+#
+# Çalıştırma:
+#   cp .env.example .env      (ve OPENAI_API_KEY'i doldur)
+#   docker compose up --build
+#
+# İlk açılışta backend/db/init/01_smartapp.sql otomatik yüklenir:
+# tablolar, 1091 tarif, ilaç etkileşimleri ve embedding'ler hazır gelir.
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: smartapp-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-appuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-apppass}
+      POSTGRES_DB: ${DB_NAME:-smartapp}
+    volumes:
+      - smartapp_pgdata:/var/lib/postgresql/data
+      # Sadece veritabanı boşken (ilk açılış) çalışır
+      - ./backend/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-appuser} -d ${DB_NAME:-smartapp}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    container_name: smartapp-api
+    depends_on:
+      db:
+        # Veritabanı gerçekten hazır olmadan backend başlamaz
+        condition: service_healthy
+    environment:
+      # Container içinden DB'ye servis adıyla erişilir, 127.0.0.1 ile değil
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-appuser}
+      DB_PASSWORD: ${DB_PASSWORD:-apppass}
+      DB_NAME: ${DB_NAME:-smartapp}
+
+      # Tarif görsellerinin URL'i bundan üretilir — yanlışsa görseller kırılır
+      BASE_URL: ${BASE_URL:-http://localhost:8000}
+
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      USE_RECIPE_LLM: ${USE_RECIPE_LLM:-1}
+      OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-gpt-4o-mini}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-768}
+
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-43200}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    restart: unless-stopped
+
+volumes:
+  smartapp_pgdata:
