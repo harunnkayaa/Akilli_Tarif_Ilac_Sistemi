@@ -156,9 +156,15 @@ Bu bir test APK'sıdır, teslim sürümü değildir.
       ve `requestBody: true` olduğu için giriş şifresini logcat'e düz metin yazıyor.
 - [ ] **APK boyutu** — 86 MB. `--split-per-abi` ile ~30 MB'a iner.
 
-### ⚠️ Acil olmayan ama önemli
-Son commit **8 Mart**. Aradaki **33 dosyalık, ~5 aylık iş commit edilmemiş.**
-Yedek yok; disk giderse emek gider. Teslimden önce commit edilmeli.
+### ✅ Commit + push tamamlandı (14 Ağustos)
+~5 aylık birikmiş iş iki commit hâlinde GitHub'a gönderildi
+(`harunnkayaa/Akilli_Tarif_Ilac_Sistemi`, `main`):
+- `5423049` uygulama geliştirmeleri (1121 dosya, 1088 tarif görseli dahil)
+- `d686384` teslim altyapısı (Docker, dump, docs)
+
+`.gitignore`'daki `backend/app/static/recipes/` kuralı kaldırıldı — Render imajı
+GitHub'dan derlediği için görsellerin repoda olması **zorunlu**, yoksa tüm tarif
+fotoğrafları kırık çıkar. `.env` dosyaları gitignore'da, API key sızmadı (doğrulandı).
 
 ---
 
