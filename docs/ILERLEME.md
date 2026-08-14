@@ -110,40 +110,63 @@ gerçek APK ile test edildi:
 
 ---
 
-## Mevcut Durum
+## Mevcut Durum (14 Ağustos 2026)
 
 ```
 1. ✅ Veritabanı taşınabilir
 2. ✅ Docker (backend + db)
 3. ✅ Adres esnek
 4. ✅ APK derleniyor ve çalışıyor
-5. ⏳ Yayına alma + teslim paketi   ← KALAN
+5. ✅ YAYINA ALINDI — backend + veritabanı internette
+6. ⏳ Teslim APK'sı + pinger + README   ← KALAN
 ```
 
+### 🌐 Yayındaki sistem
+
+| Bileşen | Adres / Durum |
+|---|---|
+| Backend | **https://akilli-tarif-ilac-api.onrender.com** — Render, Frankfurt, Free |
+| Veritabanı | Neon PostgreSQL **16.14** + pgvector 0.8.0, Frankfurt, 29 MB |
+| Repo | `github.com/harunnkayaa/Akilli_Tarif_Ilac_Sistemi`, `main`'den otomatik deploy |
+
+Render ayarları: Root Directory `backend`, Health Check Path `/health`,
+Auto-Deploy `On Commit`, 12 ortam değişkeni (`BASE_URL` dahil).
+Neon bağlantı adresi `backend/.env.neon` dosyasında (gitignore'da).
+
+**Yayında test edilip doğrulananlar:** `/health`, `/llm/ping` (llm_enabled true),
+`/db/ping`, demo hesapla giriş, chat (gerçek tarif kartları döndü), statik görseller
+(HTTP 200, 59 KB), `BASE_URL` sonrası görsel adresleri artık
+`https://akilli-tarif-ilac-api.onrender.com/static/...` olarak dönüyor.
+
 **Şu anki APK:** `frontend/mobile_app/build/app/outputs/flutter-apk/app-release.apk` (86 MB)
-İçinde `172.2.3.123:8000` gömülü → **sadece geliştiricinin yerel ağında çalışır.**
-Bu bir test APK'sıdır, teslim sürümü değildir.
+İçinde `10.0.2.2:8000` gömülü → **yalnızca yerel emülatör için.** Teslim sürümü değil.
 
 ---
 
 ## Kalan İşler
 
-### Yayına alma (hesap gerektirir)
-1. **Neon** (neon.tech) — ücretsiz PostgreSQL, pgvector eklentisi aktif edilecek
-   - Dump 20 MB, ücretsiz limit ~500 MB → rahat sığıyor
-2. **Render** (render.com) — backend, mevcut `Dockerfile` ile deploy edilecek
-3. Yayındaki adresle APK yeniden derlenecek:
+1. **Teslim APK'sını derle** (yayın adresiyle):
    ```bash
-   flutter build apk --release --dart-define=API_BASE_URL=https://<adres>
+   cd frontend/mobile_app
+   flutter build apk --release \
+     --dart-define=API_BASE_URL=https://akilli-tarif-ilac-api.onrender.com
    ```
-4. Backend'de `BASE_URL` de aynı adres yapılacak
-   *(unutulursa uygulama çalışır ama tüm tarif görselleri kırık görünür)*
+2. Emülatörde uçtan uca test (giriş, chat, görseller, bildirim)
+3. **Uptime pinger** kur — UptimeRobot / cron-job.org ile `/health`'e 10 dk'da bir ping
+4. README + teslim paketi
+5. **Neon şifresini sıfırla** (sohbette görünmüştü), Render'daki `DB_PASSWORD`'ü güncelle
 
 ### Bilinen riskler
-- **Cold start:** Ücretsiz Render 15 dk sonra uyur. Uygulamadaki bazı timeout'lar kısa
-  (`boot_screen.dart` 6 sn, `auth_api.dart` 5 sn) → ilk açılışta hata görülebilir.
+- **Cold start / kesinti (ÖLÇÜLDÜ):** Uyanıkken bile 15 istekten 1'i düşüyor (~%7).
+  Düşen istekler `x-render-routing: no-server` başlığıyla düz metin `Not Found` dönüyor —
+  yani hata uygulamada değil, Render'ın önündeki katmanda. Servis uykudayken gelen ilk
+  istek de aynı şekilde düşüyor (uyandırma tetikleniyor ama istek kaybediliyor).
+  Chat'in servisi çökertmediği doğrulandı (chat sonrası 10/10 sağlık kontrolü geçti),
+  yani 512 MB RAM sorunu değil.
   **Çözüm:** UptimeRobot / cron-job.org ile `/health` adresine 10 dakikada bir ping.
   (`/health` DB'ye ve OpenAI'a dokunmaz, maliyeti yok.)
+  Uygulamadaki kısa timeout'lar (`boot_screen.dart` 6 sn, `auth_api.dart` 5 sn) bu
+  kesintilerde hata gösterebilir; gerekirse yükseltilmeli.
 - **Süreklilik:** Ücretsiz katman ileride kapanabilir → Docker paketi de yedek olarak teslim edilmeli.
 
 ### Karar bekleyenler
